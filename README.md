@@ -1,4 +1,4 @@
-# 🤖 NovaMind AI Chatbot
+# 🤖 BudgetBrain AI Chatbot
 
 A full-stack AI chatbot built with the MERN stack + Claude AI API.
 
