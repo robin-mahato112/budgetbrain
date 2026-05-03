@@ -1,0 +1,58 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --transition: 0.2s ease;
+}
+
+[data-theme='dark'] {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --surface2: #1c1c28;
+  --border: rgba(255,255,255,0.08);
+  --accent: #7c6ff7;
+  --accent-hover: #6a5ee0;
+  --text: #f0f0f8;
+  --muted: #8888aa;
+  --user-bubble: #7c6ff7;
+  --ai-bubble: #1c1c28;
+  --danger: #e24b4a;
+}
+
+[data-theme='light'] {
+  --bg: #f4f3ff;
+  --surface: #ffffff;
+  --surface2: #ebebf8;
+  --border: rgba(0,0,0,0.08);
+  --accent: #6055d8;
+  --accent-hover: #4f45c0;
+  --text: #1a1a2e;
+  --muted: #6666aa;
+  --user-bubble: #6055d8;
+  --ai-bubble: #ebebf8;
+  --danger: #e24b4a;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  transition: background var(--transition), color var(--transition);
+}
+
+button { cursor: pointer; font-family: var(--font-body); }
+input, textarea { font-family: var(--font-body); }
+a { text-decoration: none; color: inherit; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
