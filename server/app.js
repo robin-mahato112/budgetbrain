@@ -12,7 +12,9 @@ import { prisma } from './lib/prisma.js';
 import './lib/sentry.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/auth.js';
+import aiRoutes from './routes/ai.js';
 import chatRoutes from './routes/chat.js';
+import demoBankRoutes from './routes/demoBank.js';
 import financeRoutes from './routes/finance.js';
 
 export function createApp() {
@@ -44,7 +46,7 @@ export function createApp() {
     },
     credentials: false,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-File-Name', 'X-Document-Kind'],
   }));
   app.use(express.json({ limit: '32kb' }));
   app.use((req, res, next) => {
@@ -79,7 +81,9 @@ export function createApp() {
     legacyHeaders: false,
     message: { message: 'Too many authentication attempts', error: { code: 'AUTH_RATE_LIMITED', message: 'Too many authentication attempts' } },
   }), authRoutes);
+  app.use('/api/ai', aiRoutes);
   app.use('/api/chat', chatRoutes);
+  app.use('/api/demo-bank', demoBankRoutes);
   app.use('/api/finance', financeRoutes);
   app.use(notFoundHandler);
   app.use(errorHandler);

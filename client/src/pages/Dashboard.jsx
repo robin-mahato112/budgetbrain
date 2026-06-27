@@ -1,9 +1,10 @@
-import SummaryCards from '../components/dashboard/SummaryCards';
-import SpendingChart from '../components/dashboard/SpendingChart';
-import BudgetProgress from '../components/dashboard/BudgetProgress';
+import MoneyModePanel from '../components/dashboard/MoneyModePanel';
+import InsightCards from '../components/dashboard/InsightCards';
+import InsightCharts from '../components/dashboard/InsightCharts';
 import RecentTransactions from '../components/dashboard/RecentTransactions';
-import MiniChatbot from '../components/chatbot/MiniChatbot';
-import FinanceTips from '../components/chatbot/FinanceTips';
+import DemoBankPanel from '../components/dashboard/DemoBankPanel';
+import MiniGuardPreview from '../components/dashboard/MiniGuardPreview';
+import SmartEntryPanel from '../components/dashboard/SmartEntryPanel';
 import PageContainer from '../components/layout/PageContainer';
 import { useFinance } from '../hooks/useFinance';
 
@@ -12,22 +13,19 @@ export default function Dashboard() {
   return (
     <PageContainer
       eyebrow="Overview"
-      title="Your financial dashboard"
-      description="A clear view of your cash flow, progress, and next best actions."
+      title="Your payday guardrail"
+      description="Bank balances show money in the account. BudgetBrain shows what is safe to spend before payday after essentials are protected."
     >
       {error && <p className="data-warning" role="status">{error}</p>}
-      <SummaryCards />
+      <MoneyModePanel />
+      <MiniGuardPreview />
+      <InsightCards />
+      <InsightCharts />
       <div className="dashboard-grid">
         <div className="dashboard-grid__main">
-          <SpendingChart />
+          <DemoBankPanel />
+          <SmartEntryPanel />
           <RecentTransactions />
-        </div>
-        <div className="dashboard-grid__side">
-          <MiniChatbot />
-          <FinanceTips />
-        </div>
-        <div className="dashboard-grid__full">
-          <BudgetProgress />
         </div>
       </div>
     </PageContainer>

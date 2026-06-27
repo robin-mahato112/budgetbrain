@@ -1,60 +1,39 @@
 import express from 'express';
 import {
-  createBudget,
-  createDebt,
-  createSavingsGoal,
+  checkAffordability,
+  confirmExtractedDocument,
   createTransaction,
-  deleteBudget,
-  deleteDebt,
-  deleteSavingsGoal,
+  deleteDocumentPreview,
   deleteTransaction,
   getFinanceSummary,
-  getSpendingTrend,
-  listBudgets,
-  listDebts,
-  listSavingsGoals,
+  getTransactionInsights,
+  importTransactions,
+  listDocumentPreviews,
   listTransactions,
-  updateBudget,
-  updateDebt,
-  updateSavingsGoal,
+  quickAddPreview,
+  uploadDocument,
 } from '../controllers/financeController.js';
 import { asyncHandler } from '../lib/errors.js';
 import protect from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import {
-  budgetCreateSchema,
-  budgetUpdateSchema,
-  debtCreateSchema,
-  debtUpdateSchema,
-  goalCreateSchema,
-  goalUpdateSchema,
-  idParamsSchema,
-  transactionCreateSchema,
-} from '../validation/schemas.js';
+import { idParamsSchema, transactionCreateSchema } from '../validation/schemas.js';
 
 const router = express.Router();
 router.use(protect);
 
 router.get('/summary', asyncHandler(getFinanceSummary));
-router.get('/spending-trend', asyncHandler(getSpendingTrend));
+router.get('/insights', asyncHandler(getTransactionInsights));
+router.post('/affordability', asyncHandler(checkAffordability));
 
-router.get('/budgets', asyncHandler(listBudgets));
-router.post('/budgets', validate(budgetCreateSchema), asyncHandler(createBudget));
-router.patch('/budgets/:id', validate(idParamsSchema, 'params'), validate(budgetUpdateSchema), asyncHandler(updateBudget));
-router.delete('/budgets/:id', validate(idParamsSchema, 'params'), asyncHandler(deleteBudget));
+router.get('/documents', asyncHandler(listDocumentPreviews));
+router.post('/documents/upload', express.raw({ type: ['image/png', 'image/jpeg', 'application/pdf', 'text/plain'], limit: '5mb' }), asyncHandler(uploadDocument));
+router.post('/documents/quick-add', asyncHandler(quickAddPreview));
+router.post('/documents/:id/confirm', validate(idParamsSchema, 'params'), asyncHandler(confirmExtractedDocument));
+router.delete('/documents/:id', validate(idParamsSchema, 'params'), asyncHandler(deleteDocumentPreview));
 
 router.get('/transactions', asyncHandler(listTransactions));
 router.post('/transactions', validate(transactionCreateSchema), asyncHandler(createTransaction));
+router.post('/transactions/import', express.text({ type: ['text/csv', 'text/plain'], limit: '64kb' }), asyncHandler(importTransactions));
 router.delete('/transactions/:id', validate(idParamsSchema, 'params'), asyncHandler(deleteTransaction));
-
-router.get('/savings-goals', asyncHandler(listSavingsGoals));
-router.post('/savings-goals', validate(goalCreateSchema), asyncHandler(createSavingsGoal));
-router.patch('/savings-goals/:id', validate(idParamsSchema, 'params'), validate(goalUpdateSchema), asyncHandler(updateSavingsGoal));
-router.delete('/savings-goals/:id', validate(idParamsSchema, 'params'), asyncHandler(deleteSavingsGoal));
-
-router.get('/debts', asyncHandler(listDebts));
-router.post('/debts', validate(debtCreateSchema), asyncHandler(createDebt));
-router.patch('/debts/:id', validate(idParamsSchema, 'params'), validate(debtUpdateSchema), asyncHandler(updateDebt));
-router.delete('/debts/:id', validate(idParamsSchema, 'params'), asyncHandler(deleteDebt));
 
 export default router;

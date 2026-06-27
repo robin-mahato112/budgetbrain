@@ -7,7 +7,6 @@ import { ThemeProvider } from './context/ThemeContext';
 import './styles/global.css';
 import './styles/layout.css';
 import './styles/dashboard.css';
-import './styles/chatbot.css';
 import './styles/forms.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(

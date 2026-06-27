@@ -1,11 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import LegalPage from '../features/compliance/LegalPage';
 import Dashboard from '../pages/Dashboard';
-import BudgetTracker from '../pages/BudgetTracker';
-import SavingsGoal from '../pages/SavingsGoal';
-import DebtPayoff from '../pages/DebtPayoff';
-import BillSplitter from '../pages/BillSplitter';
-import ChatHistory from '../pages/ChatHistory';
+import DemoBank from '../pages/DemoBank';
+import MiniGuard from '../pages/MiniGuard';
+import PaydaySetup from '../pages/PaydaySetup';
+import ProtectedEssentials from '../pages/ProtectedEssentials';
+import Transactions from '../pages/Transactions';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Settings from '../pages/Settings';
@@ -16,16 +15,14 @@ export default function AppRoutes({ shell: Shell }) {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/privacy" element={<LegalPage type="privacy" />} />
-      <Route path="/terms" element={<LegalPage type="terms" />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<Shell />}>
           <Route index element={<Dashboard />} />
-          <Route path="/budget" element={<BudgetTracker />} />
-          <Route path="/savings" element={<SavingsGoal />} />
-          <Route path="/debt" element={<DebtPayoff />} />
-          <Route path="/split" element={<BillSplitter />} />
-          <Route path="/history" element={<ChatHistory />} />
+          <Route path="/connect-bank" element={<DemoBank />} />
+          <Route path="/payday-setup" element={<PaydaySetup />} />
+          <Route path="/protected-essentials" element={<ProtectedEssentials />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/mini-guard" element={<MiniGuard />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>

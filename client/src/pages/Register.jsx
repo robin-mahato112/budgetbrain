@@ -11,6 +11,10 @@ export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '', accepted: false });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const updateField = (field) => (event) => {
+    const { type, checked, value } = event.target;
+    setForm((current) => ({ ...current, [field]: type === 'checkbox' ? checked : value }));
+  };
 
   if (user) return <Navigate to="/" replace />;
 
@@ -32,17 +36,17 @@ export default function Register() {
     <main className="auth-page">
       <section className="auth-panel auth-panel--brand">
         <div className="auth-brand"><span><ChartNoAxesCombined size={23} /></span><strong>BudgetBrain</strong></div>
-        <div><p className="eyebrow">Start with a plan</p><h1>Your financial picture, organised and easier to act on.</h1><p>Create a private workspace for budgets, goals, debt planning, and educational AI guidance.</p></div>
+        <div><p className="eyebrow">Start with payday</p><h1>Build a clear guardrail before your next pay.</h1><p>Create a private workspace for safe-to-spend, protected essentials, money pressure, and calm next actions.</p></div>
       </section>
       <section className="auth-panel auth-panel--form">
         <form className="auth-card" onSubmit={submit}>
           <div><p className="eyebrow">Create account</p><h2>Set up your workspace</h2><p>Use a password you do not reuse elsewhere.</p></div>
           {error && <p className="form-error" role="alert">{error}</p>}
-          <Input label="Full name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
-          <Input label="Email address" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required />
-          <Input label="Password" type="password" minLength="6" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required />
+          <Input label="Full name" value={form.name} onChange={updateField('name')} required />
+          <Input label="Email address" type="email" value={form.email} onChange={updateField('email')} required />
+          <Input label="Password" type="password" minLength="6" value={form.password} onChange={updateField('password')} required />
           <label className="checkbox-field">
-            <input type="checkbox" checked={form.accepted} onChange={(event) => setForm({ ...form, accepted: event.target.checked })} required />
+            <input type="checkbox" checked={form.accepted} onChange={updateField('accepted')} required />
             <span>I agree to the <Link to="/terms">terms</Link> and acknowledge the <Link to="/privacy">privacy notice</Link>.</span>
           </label>
           <Button type="submit" disabled={loading || !form.accepted}>{loading ? 'Creating account...' : 'Create account'}</Button>

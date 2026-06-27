@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,6 +8,7 @@ const prismaMock = vi.hoisted(() => ({
     findUnique: vi.fn(),
     create: vi.fn(),
     delete: vi.fn(),
+    update: vi.fn(),
   },
 }));
 
@@ -18,6 +20,7 @@ describe('auth API', () => {
   beforeEach(() => {
     prismaMock.user.findUnique.mockReset();
     prismaMock.user.create.mockReset();
+    prismaMock.user.update.mockReset();
   });
 
   it('registers a valid user and hashes the password', async () => {
@@ -66,5 +69,46 @@ describe('auth API', () => {
     });
     expect(response.status).toBe(200);
     expect(response.body.token).toBeTruthy();
+  });
+
+  it('requires current password for sensitive account updates', async () => {
+    const user = {
+      id: '3da104e7-75c7-4d9f-8b16-b2e129cd92db',
+      name: 'Test User',
+      email: 'test@example.com',
+      role: 'USER',
+      passwordHash: await bcrypt.hash('Password123', 4),
+    };
+    prismaMock.user.findUnique.mockResolvedValue(user);
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET);
+
+    const response = await request(createApp())
+      .patch('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ email: 'new@example.com', currentPassword: 'wrong' });
+
+    expect(response.status).toBe(401);
+    expect(prismaMock.user.update).not.toHaveBeenCalled();
+  });
+
+  it('saves privacy and AI consent settings with password verification', async () => {
+    const user = {
+      id: '3da104e7-75c7-4d9f-8b16-b2e129cd92db',
+      name: 'Test User',
+      email: 'test@example.com',
+      role: 'USER',
+      passwordHash: await bcrypt.hash('Password123', 4),
+    };
+    prismaMock.user.findUnique.mockResolvedValue(user);
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET);
+
+    const response = await request(createApp())
+      .patch('/api/auth/preferences')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: 'Password123', allowAiFinancialSummary: false, includeUploadedDocumentsInAi: false });
+
+    expect(response.status).toBe(200);
+    expect(response.body.allowAiFinancialSummary).toBe(false);
+    expect(response.body.includeUploadedDocumentsInAi).toBe(false);
   });
 });

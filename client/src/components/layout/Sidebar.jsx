@@ -1,14 +1,13 @@
 import {
-  BotMessageSquare,
-  Calculator,
   ChartNoAxesCombined,
-  CircleDollarSign,
+  Landmark,
   LayoutDashboard,
   LogOut,
   Menu,
-  PiggyBank,
   ReceiptText,
+  ShieldCheck,
   Settings,
+  Smartphone,
   WalletCards,
   X,
 } from 'lucide-react';
@@ -17,11 +16,11 @@ import { useAuth } from '../../hooks/useAuth';
 
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/budget', label: 'Budget Tracker', icon: WalletCards },
-  { to: '/savings', label: 'Savings Goal', icon: PiggyBank },
-  { to: '/debt', label: 'Debt Payoff', icon: CircleDollarSign },
-  { to: '/split', label: 'Bill Splitter', icon: Calculator },
-  { to: '/history', label: 'Chat History', icon: BotMessageSquare },
+  { to: '/connect-bank', label: 'Connect Bank', icon: Landmark },
+  { to: '/payday-setup', label: 'Payday Setup', icon: WalletCards },
+  { to: '/protected-essentials', label: 'Protected Essentials', icon: ShieldCheck },
+  { to: '/transactions', label: 'Transactions', icon: ReceiptText },
+  { to: '/mini-guard', label: 'Mini Guard', icon: Smartphone },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -41,7 +40,7 @@ export default function Sidebar({ open, onClose, onOpen }) {
       <aside className={`sidebar ${open ? 'sidebar--open' : ''}`}>
         <div className="sidebar__brand">
           <div className="sidebar__brand-mark"><ChartNoAxesCombined size={21} /></div>
-          <div><strong>BudgetBrain</strong><span>Finance workspace</span></div>
+          <div><strong>BudgetBrain</strong><span>Payday guardrail</span></div>
           <button className="sidebar__close" onClick={onClose} aria-label="Close navigation"><X size={20} /></button>
         </div>
 
@@ -64,7 +63,7 @@ export default function Sidebar({ open, onClose, onOpen }) {
         <div className="sidebar__footer">
           <div className="sidebar__secure">
             <ReceiptText size={17} />
-            <div><strong>Private workspace</strong><span>Your data stays protected</span></div>
+            <div><strong>Protected essentials</strong><span>Safe-to-spend first</span></div>
           </div>
           <button className="sidebar__link sidebar__logout" onClick={handleLogout}>
             <LogOut size={19} /><span>Logout</span>

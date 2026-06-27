@@ -1,122 +1,68 @@
-import {
-  Bell,
-  CircleDollarSign,
-  Moon,
-  PiggyBank,
-  Plus,
-  Receipt,
-  Sun,
-  UserRound,
-} from 'lucide-react';
+import { LogOut, Settings, ShieldCheck, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useFinance } from '../../hooks/useFinance';
-import { useTheme } from '../../hooks/useTheme';
-import Button from '../common/Button';
-import Input from '../common/Input';
-import Modal from '../common/Modal';
+
+const titles = {
+  '/': 'Dashboard',
+  '/connect-bank': 'Connect Bank',
+  '/payday-setup': 'Payday Setup',
+  '/protected-essentials': 'Protected Essentials',
+  '/transactions': 'Transactions',
+  '/mini-guard': 'Mini Guard',
+  '/settings': 'Settings',
+};
 
 export default function TopNavbar() {
-  const { user } = useAuth();
-  const { addTransaction, addSavingsGoal, debts } = useFinance();
-  const { theme, toggleTheme } = useTheme();
-  const [modal, setModal] = useState(null);
-  const [form, setForm] = useState({});
-  const [notice, setNotice] = useState('');
-  const [formError, setFormError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const noticeTimer = useRef(null);
+  const { user, logout } = useAuth();
+  const { insights } = useFinance();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
 
-  useEffect(() => () => window.clearTimeout(noticeTimer.current), []);
+  useEffect(() => {
+    const close = (event) => {
+      if (!menuRef.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
 
-  const closeModal = () => { setModal(null); setForm({}); setFormError(''); };
-  const showNotice = (message) => {
-    setNotice(message);
-    window.clearTimeout(noticeTimer.current);
-    noticeTimer.current = window.setTimeout(() => setNotice(''), 2500);
-  };
-
-  const saveTransaction = async (event) => {
-    event.preventDefault();
-    if (saving) return;
-    setSaving(true);
-    const result = await addTransaction({ ...form, type: modal });
-    if (!result.ok) {
-      setFormError(result.message);
-      setSaving(false);
-      return;
-    }
-    closeModal();
-    showNotice(`${modal === 'income' ? 'Income' : 'Expense'} added`);
-    setSaving(false);
-  };
-
-  const saveGoal = async (event) => {
-    event.preventDefault();
-    if (saving) return;
-    setSaving(true);
-    const result = await addSavingsGoal(form);
-    if (!result.ok) {
-      setFormError(result.message);
-      setSaving(false);
-      return;
-    }
-    closeModal();
-    showNotice('Savings goal added');
-    setSaving(false);
+  const handleLogout = () => {
+    setOpen(false);
+    logout();
+    navigate('/login');
   };
 
   return (
-    <>
-      <header className="top-navbar">
-        <div className="top-navbar__heading">
-          <span className="top-navbar__date">Financial overview</span>
-          <strong>Good to see you, {user?.name?.split(' ')[0] || 'there'}</strong>
+    <header className="top-navbar">
+      <div className="top-navbar__heading">
+        <span className="top-navbar__date">BudgetBrain</span>
+        <strong>{titles[location.pathname] || 'Payday Guardrail'}</strong>
+      </div>
+      <div className="top-navbar__actions">
+        <div className="sync-pill" aria-label="Sync status">
+          <ShieldCheck size={16} />
+          <span>{insights?.demoBank?.connected ? 'Demo Bank Connected' : 'No bank data connected'}</span>
+          <strong>{insights?.confidence?.level || 'Not Ready'}</strong>
         </div>
-        <div className="top-navbar__actions">
-          <Button variant="ghost" size="small" icon={Plus} onClick={() => setModal('income')}>Income</Button>
-          <Button variant="ghost" size="small" icon={Receipt} onClick={() => setModal('expense')}>Expense</Button>
-          <button className="icon-button" onClick={() => setModal('goal')} aria-label="Add savings goal"><PiggyBank size={19} /></button>
-          <button className="icon-button icon-button--alert" onClick={() => showNotice(`${debts.length} debts are being tracked`)} aria-label="View debt alerts"><CircleDollarSign size={19} /></button>
-          <button className="icon-button" onClick={() => showNotice('You have no new notifications')} aria-label="Notifications"><Bell size={19} /></button>
-          <button className="icon-button" onClick={toggleTheme} aria-label="Toggle theme">
-            {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
-          </button>
-          <button className="profile-button" onClick={() => setModal('profile')} aria-label="Open profile">
+        <div className="profile-menu" ref={menuRef}>
+          <button className="profile-button" onClick={() => setOpen((value) => !value)} aria-label="Open account menu" aria-expanded={open}>
             <UserRound size={18} /><span>{user?.name || 'Profile'}</span>
           </button>
+          {open && (
+            <div className="profile-menu__panel" role="menu">
+              <Link to="/settings#account" onClick={() => setOpen(false)} role="menuitem"><Settings size={16} />Account settings</Link>
+              <Link to="/settings#account" onClick={() => setOpen(false)} role="menuitem">Profile</Link>
+              <Link to="/settings#security" onClick={() => setOpen(false)} role="menuitem">Security</Link>
+              <Link to="/settings#privacy" onClick={() => setOpen(false)} role="menuitem">Privacy</Link>
+              <button type="button" onClick={handleLogout} role="menuitem"><LogOut size={16} />Logout</button>
+            </div>
+          )}
         </div>
-      </header>
-
-      {notice && <div className="toast" role="status">{notice}</div>}
-
-      <Modal open={modal === 'income' || modal === 'expense'} title={`Add ${modal || ''}`} onClose={closeModal}>
-        <form className="stack-form" onSubmit={saveTransaction}>
-          {formError && <p className="form-error" role="alert">{formError}</p>}
-          <Input label="Description" name="merchant" required value={form.merchant || ''} onChange={(event) => setForm({ ...form, merchant: event.target.value })} />
-          <Input label="Category" name="category" required value={form.category || ''} onChange={(event) => setForm({ ...form, category: event.target.value })} />
-          <Input label="Amount" name="amount" type="number" min="0.01" step="0.01" required value={form.amount || ''} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
-          <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save transaction'}</Button>
-        </form>
-      </Modal>
-
-      <Modal open={modal === 'goal'} title="Create savings goal" onClose={closeModal}>
-        <form className="stack-form" onSubmit={saveGoal}>
-          {formError && <p className="form-error" role="alert">{formError}</p>}
-          <Input label="Goal name" name="name" required value={form.name || ''} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-          <Input label="Target amount" name="target" type="number" min="1" required value={form.target || ''} onChange={(event) => setForm({ ...form, target: event.target.value })} />
-          <Input label="Current savings" name="current" type="number" min="0" value={form.current || ''} onChange={(event) => setForm({ ...form, current: event.target.value })} />
-          <Input label="Target date" name="deadline" type="date" value={form.deadline || ''} onChange={(event) => setForm({ ...form, deadline: event.target.value })} />
-          <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Create goal'}</Button>
-        </form>
-      </Modal>
-
-      <Modal open={modal === 'profile'} title="Profile" onClose={closeModal}>
-        <div className="profile-summary">
-          <div className="profile-summary__avatar">{user?.name?.[0]?.toUpperCase()}</div>
-          <div><strong>{user?.name}</strong><span>{user?.email}</span></div>
-        </div>
-      </Modal>
-    </>
+      </div>
+    </header>
   );
 }
