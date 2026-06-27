@@ -1,51 +1,55 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import axios from 'axios';
+import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import { authService } from '../services/authService';
 
-const AuthContext = createContext();
-const API = import.meta.env.VITE_API_URL || '';
+export const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      axios.get(`${API}/api/auth/me`)
-        .then(res => setUser(res.data))
-        .catch(() => localStorage.removeItem('token'))
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+  const logout = useCallback(() => {
+    localStorage.removeItem('token');
+    setUser(null);
   }, []);
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    authService.getProfile()
+      .then(setUser)
+      .catch(logout)
+      .finally(() => setLoading(false));
+  }, [logout]);
+
+  useEffect(() => {
+    window.addEventListener('budgetbrain:unauthorized', logout);
+    return () => window.removeEventListener('budgetbrain:unauthorized', logout);
+  }, [logout]);
+
   const login = async (email, password) => {
-    const res = await axios.post(`${API}/api/auth/login`, { email, password });
-    localStorage.setItem('token', res.data.token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
-    setUser(res.data);
+    const account = await authService.login({ email: String(email).trim().toLowerCase(), password });
+    if (!account?.token) throw new Error('Authentication response did not include a token.');
+    localStorage.setItem('token', account.token);
+    setUser(account);
+    return account;
   };
 
   const register = async (name, email, password) => {
-    const res = await axios.post(`${API}/api/auth/register`, { name, email, password });
-    localStorage.setItem('token', res.data.token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
-    setUser(res.data);
+    const account = await authService.register({
+      name: String(name).trim(),
+      email: String(email).trim().toLowerCase(),
+      password,
+    });
+    if (!account?.token) throw new Error('Registration response did not include a token.');
+    localStorage.setItem('token', account.token);
+    setUser(account);
+    return account;
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
-    setUser(null);
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => useContext(AuthContext);
+  const value = useMemo(() => ({ user, loading, login, register, logout }), [user, loading, logout]);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}

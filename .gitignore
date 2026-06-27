@@ -3,3 +3,8 @@ node_modules/
 dist/
 .DS_Store
 *.log
+server/data.json
+server/data.json.tmp
+coverage/
+.env.*
+!**/.env.example

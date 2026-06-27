@@ -1,13 +1,28 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import authRoutes from './routes/auth.js';
-import chatRoutes from './routes/chat.js';
+import { createApp } from './app.js';
+import { env } from './config/env.js';
+import { logger } from './lib/logger.js';
+import { connectDatabase, disconnectDatabase } from './lib/prisma.js';
 
-const app = express();
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
-app.use(express.json());
-app.use('/api/auth', authRoutes);
-app.use('/api/chat', chatRoutes);
-app.get('/', (req, res) => res.json({ message: 'NovaMind API running 🚀' }));
-app.listen(process.env.PORT || 5000, () => console.log('🚀 Server running on port 5000'));
+const start = async () => {
+  await connectDatabase();
+  const server = createApp().listen(env.PORT, () => {
+    logger.info({ port: env.PORT }, 'BudgetBrain API started');
+  });
+
+  const shutdown = async (signal) => {
+    logger.info({ signal }, 'shutting down');
+    server.close(async () => {
+      await disconnectDatabase();
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10000).unref();
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+};
+
+start().catch((error) => {
+  logger.fatal({ err: error }, 'failed to start API');
+  process.exit(1);
+});

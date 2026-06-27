@@ -1,24 +1,28 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './context/AuthContext';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import ChatPage from './pages/ChatPage';
+import { useState } from 'react';
+import { BrowserRouter, Outlet } from 'react-router-dom';
+import Sidebar from './components/layout/Sidebar';
+import TopNavbar from './components/layout/TopNavbar';
+import ComplianceGate from './features/compliance/ComplianceGate';
+import AppRoutes from './routes/AppRoutes';
 
-const PrivateRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'var(--muted)' }}>Loading...</div>;
-  return user ? children : <Navigate to="/login" />;
-};
+function AppShell() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  return (
+    <div className="app-shell">
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} onOpen={() => setSidebarOpen(true)} />
+      <div className="app-main">
+        <TopNavbar />
+        <main className="app-content"><Outlet /></main>
+      </div>
+      <ComplianceGate />
+    </div>
+  );
+}
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/" element={<PrivateRoute><ChatPage /></PrivateRoute>} />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <AppRoutes shell={AppShell} />
     </BrowserRouter>
   );
 }
