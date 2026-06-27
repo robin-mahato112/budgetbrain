@@ -6,7 +6,45 @@ BudgetBrain AI is a full-stack personal finance workspace for budgeting, debt pl
 
 ## Why this project matters
 
-BudgetBrain demonstrates the kind of product engineering expected in a real SaaS codebase: secure authentication, relational data modeling, validation, rate limiting, error handling, privacy controls, CI, deployment configuration and a polished responsive interface. The goal is not just to show screens, but to show a maintainable path from local development to production deployment.
+BudgetBrain demonstrates the kind of product engineering expected in a real SaaS codebase: secure authentication, relational data modeling, validation, rate limiting, error handling, privacy controls, automated verification, deployment configuration and a polished responsive interface. The goal is not just to show screens, but to show a maintainable path from local development to production deployment.
+
+## Product Preview
+
+### Login
+
+![BudgetBrain login screen](docs/screenshots/login.png)
+
+### Dashboard And AI Assistant
+
+![BudgetBrain dark dashboard with summary cards and AI assistant](docs/screenshots/dashboard-dark.png)
+
+### Budget Tracker
+
+![BudgetBrain budget tracker](docs/screenshots/budget-tracker.png)
+
+### Savings Goals
+
+![BudgetBrain savings goals page](docs/screenshots/savings-goals.png)
+
+![BudgetBrain dark savings goal modal](docs/screenshots/savings-modal-dark.png)
+
+### Debt Payoff
+
+![BudgetBrain debt payoff calculator](docs/screenshots/debt-payoff.png)
+
+### Bill Splitter
+
+![BudgetBrain bill splitter](docs/screenshots/bill-splitter.png)
+
+### Chat History And Settings
+
+![BudgetBrain chat history page](docs/screenshots/chat-history.png)
+
+![BudgetBrain settings page](docs/screenshots/settings.png)
+
+![BudgetBrain settings profile and data export cards](docs/screenshots/settings-overview.png)
+
+![BudgetBrain settings delete account section](docs/screenshots/settings-delete-account.png)
 
 ## Core Features
 
