@@ -53,7 +53,7 @@ export default function DemoBankPanel() {
       <div className="card-heading">
         <div>
           <span className="card-heading__eyebrow">Demo Bank Connection</span>
-          <h2>Build your Payday Guardrail</h2>
+          <h2>Build your money snapshot</h2>
         </div>
         <Landmark size={20} />
       </div>

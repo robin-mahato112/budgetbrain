@@ -1,6 +1,8 @@
 # BudgetBrain AI
 
-BudgetBrain is a Payday Guardrail + Money Pressure app. Banking apps show your balance, but your balance is not the same as spendable money. BudgetBrain protects essentials first, then shows what is safe to spend before payday.
+> Last updated: 2026-08-24
+
+BudgetBrain is a Payday Guardrail and Money Pressure app. Banking apps show your balance, but your balance is not the same as spendable money. BudgetBrain protects essentials first, then shows what is safe to spend before payday.
 
 > BudgetBrain is an educational tool, not a licensed financial adviser. AI explanations are supportive summaries of backend calculations, not professional financial advice.
 

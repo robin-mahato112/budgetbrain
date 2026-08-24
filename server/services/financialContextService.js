@@ -143,6 +143,7 @@ export function buildAiFinancialContext(transactions, options = {}) {
     `Net savings: ${insights.netSavings.toFixed(2)}`,
     `Current balance: ${insights.moneyMode.currentBalance.toFixed(2)}`,
     `Protected money: ${insights.moneyMode.protectedMoney.toFixed(2)}`,
+    `Guilt-free spending: ${insights.moneyMode.guiltFreeSpending.toFixed(2)}`,
     `Safe to spend: ${insights.moneyMode.guiltFreeSpending.toFixed(2)}`,
     `Recovery gap: ${insights.moneyMode.recoveryGap.toFixed(2)}`,
     `Confidence: ${insights.confidence.level}`,
@@ -229,14 +230,14 @@ function sumCategories(byCategory, categories) {
 }
 
 function buildCategoryWarning({ monthlyExpenses, topCategoryEntry, topCategoryShare, reviewCategoryAmount, protectedMoneyMissing }) {
+  if (reviewCategoryAmount > 0) {
+    return 'Some transactions need review before BudgetBrain can give accurate spending insights.';
+  }
   if (protectedMoneyMissing) {
     return 'Add rent, bills, or recurring essentials to calculate your real guilt-free spending.';
   }
   if (monthlyExpenses <= 0) {
     return 'No expense pattern detected yet. Import transactions to see spending insights.';
-  }
-  if (reviewCategoryAmount > 0) {
-    return 'Some transactions need review before BudgetBrain can give accurate spending insights.';
   }
   if (topCategoryShare >= 0.35 && topCategoryEntry[1] > 0 && topCategoryEntry[0] !== 'None') {
     return `Your highest spending category this month is ${topCategoryEntry[0]} at ${topCategoryEntry[1].toFixed(0)}.`;

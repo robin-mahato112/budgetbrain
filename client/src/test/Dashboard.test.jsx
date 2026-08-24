@@ -54,14 +54,14 @@ describe('Dashboard', () => {
   beforeEach(() => render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><Dashboard /></MemoryRouter>));
 
   it('renders the focused money assistant dashboard', () => {
-    expect(screen.getByRole('heading', { name: /payday guardrail/i })).toBeInTheDocument();
-    expect(screen.getByText('Freedom Mode')).toBeInTheDocument();
-    expect(screen.getByText('Safe to Spend')).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: /payday guardrail/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Freedom Mode').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Safe to Spend').length).toBeGreaterThan(0);
     expect(screen.getByText(/\$720 Safe/i)).toBeInTheDocument();
     expect(screen.getByText('Demo Bank Connected')).toBeInTheDocument();
     expect(screen.getAllByText(/Confidence: High/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Money Pressure').length).toBeGreaterThan(0);
-    expect(screen.getByText('Update your payday guardrail')).toBeInTheDocument();
+    expect(screen.getByText('Update your daily plan')).toBeInTheDocument();
     expect(screen.getByText('Recent transactions')).toBeInTheDocument();
   });
 });

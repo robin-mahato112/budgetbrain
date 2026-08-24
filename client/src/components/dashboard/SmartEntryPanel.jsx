@@ -61,7 +61,7 @@ export default function SmartEntryPanel() {
       <div className="card-heading">
         <div>
           <span className="card-heading__eyebrow">Smart Add</span>
-          <h2>Update your payday guardrail</h2>
+          <h2>Update your daily plan</h2>
         </div>
         <Sparkles size={20} />
       </div>
