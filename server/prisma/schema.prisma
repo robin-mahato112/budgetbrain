@@ -28,6 +28,25 @@ enum UsagePeriod {
   MONTHLY
 }
 
+enum FinancialProvider {
+  DEMO_BANK
+  YNAB
+  CSV
+}
+
+enum ConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum ImportStatus {
+  PREVIEW
+  COMPLETED
+  PARTIAL
+  DELETED
+}
+
 model User {
   id           String        @id @default(uuid()) @db.Uuid
   name         String        @db.VarChar(100)
@@ -42,6 +61,21 @@ model User {
   savingsGoals SavingsGoal[]
   debts        Debt[]
   aiUsage      AiUsage[]
+  baseCurrency String        @default("AUD") @db.VarChar(3)
+  countryCode  String        @default("AU") @db.VarChar(2)
+  nextPayday   DateTime?     @db.Date
+  paydayConfirmed Boolean    @default(false)
+  holidayPaydayRule String?  @db.VarChar(30)
+  currentBalance Decimal? @db.Decimal(12, 2)
+  expectedIncome Decimal? @db.Decimal(12, 2)
+  incomeFrequency String @default("WEEKLY") @db.VarChar(20)
+  safetyBuffer Decimal @default(0) @db.Decimal(12, 2)
+  financialConnections FinancialConnection[]
+  externalAccounts ExternalAccount[]
+  transactionImports TransactionImport[]
+  categoryRules UserCategoryRule[]
+  recurringPatterns RecurringTransactionPattern[]
+  protectedCosts ProtectedCost[]
 }
 
 model Chat {
@@ -92,12 +126,185 @@ model Transaction {
   occurredAt  DateTime
   description String?         @db.VarChar(500)
   source      String          @default("manual") @db.VarChar(20)
+  externalId  String?         @db.VarChar(191)
+  accountName String?         @db.VarChar(120)
+  currency    String          @default("AUD") @db.VarChar(3)
+  originalAmount Decimal?     @db.Decimal(16, 4)
+  originalCurrency String?    @db.VarChar(3)
+  exchangeRate Decimal?       @db.Decimal(18, 10)
+  rateDate    DateTime?       @db.Date
+  fingerprint String?         @db.VarChar(64)
+  deletedAt   DateTime?
+  importId    String?         @db.Uuid
+  externalAccountId String?   @db.Uuid
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionImport TransactionImport? @relation(fields: [importId], references: [id], onDelete: SetNull)
+  externalAccount ExternalAccount? @relation(fields: [externalAccountId], references: [id], onDelete: SetNull)
 
   @@index([userId, occurredAt])
   @@index([userId, category])
+  @@unique([userId, source, externalId])
+  @@index([userId, fingerprint])
+  @@index([importId])
+}
+
+model FinancialConnection {
+  id              String             @id @default(uuid()) @db.Uuid
+  userId          String             @db.Uuid
+  provider        FinancialProvider
+  status          ConnectionStatus   @default(DISCONNECTED)
+  externalId      String?            @db.VarChar(191)
+  displayName     String?            @db.VarChar(120)
+  encryptedAccessToken String?
+  encryptedRefreshToken String?
+  tokenExpiresAt  DateTime?
+  selectedBudgetId String?            @db.VarChar(191)
+  syncCursor      String?             @db.VarChar(191)
+  lastSyncedAt    DateTime?
+  lastError       String?             @db.VarChar(500)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts        ExternalAccount[]
+
+  @@unique([userId, provider])
+  @@index([userId, status])
+}
+
+model ExternalAccount {
+  id            String              @id @default(uuid()) @db.Uuid
+  userId        String              @db.Uuid
+  connectionId  String              @db.Uuid
+  externalId    String              @db.VarChar(191)
+  name          String              @db.VarChar(120)
+  currency      String              @default("AUD") @db.VarChar(3)
+  closed        Boolean             @default(false)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection    FinancialConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+
+  @@unique([connectionId, externalId])
+  @@index([userId])
+}
+
+model TransactionImport {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @db.Uuid
+  fileName    String       @db.VarChar(255)
+  fingerprint String       @db.VarChar(64)
+  status      ImportStatus @default(PREVIEW)
+  totalRows   Int
+  validRows   Int          @default(0)
+  duplicateRows Int        @default(0)
+  invalidRows Int          @default(0)
+  mapping     Json
+  createdAt   DateTime     @default(now())
+  completedAt DateTime?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rows        TransactionImportRow[]
+  transactions Transaction[]
+
+  @@unique([userId, fingerprint])
+  @@index([userId, createdAt])
+}
+
+model TransactionImportRow {
+  id          String            @id @default(uuid()) @db.Uuid
+  importId    String            @db.Uuid
+  rowNumber   Int
+  rawData     Json
+  status      String            @db.VarChar(20)
+  error       String?           @db.VarChar(500)
+  fingerprint String?           @db.VarChar(64)
+  import      TransactionImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@unique([importId, rowNumber])
+}
+
+model UserCategoryRule {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  merchantKey String   @db.VarChar(120)
+  category    String   @db.VarChar(40)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, merchantKey])
+}
+
+model RecurringTransactionPattern {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  merchantKey    String   @db.VarChar(120)
+  description    String   @db.VarChar(120)
+  amount         Decimal  @db.Decimal(12, 2)
+  currency       String   @default("AUD") @db.VarChar(3)
+  cadence        String   @db.VarChar(20)
+  nextExpectedAt DateTime @db.Date
+  confidence     Decimal  @db.Decimal(4, 3)
+  protectionStatus String @default("PENDING") @db.VarChar(20)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  protectedCosts ProtectedCost[]
+
+  @@unique([userId, merchantKey, cadence])
+  @@index([userId, nextExpectedAt])
+}
+
+model ProtectedCost {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String   @db.Uuid
+  recurringPatternId String?  @db.Uuid
+  name               String   @db.VarChar(120)
+  category           String   @db.VarChar(40)
+  classification     String   @default("FIXED") @db.VarChar(30)
+  amount             Decimal  @db.Decimal(12, 2)
+  originalAmount     Decimal? @db.Decimal(16, 4)
+  currency           String   @default("AUD") @db.VarChar(3)
+  exchangeRate       Decimal? @db.Decimal(18, 10)
+  rateDate           DateTime? @db.Date
+  frequency          String   @default("ONE_TIME") @db.VarChar(20)
+  nextDueDate        DateTime @db.Date
+  enabled            Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recurringPattern   RecurringTransactionPattern? @relation(fields: [recurringPatternId], references: [id], onDelete: SetNull)
+
+  @@index([userId, enabled, nextDueDate])
+  @@index([recurringPatternId])
+}
+
+model CurrencyRate {
+  id             String   @id @default(uuid()) @db.Uuid
+  sourceCurrency String   @db.VarChar(3)
+  targetCurrency String   @db.VarChar(3)
+  rate           Decimal  @db.Decimal(18, 10)
+  rateDate       DateTime @db.Date
+  provider       String   @db.VarChar(40)
+  estimated      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@unique([sourceCurrency, targetCurrency, rateDate])
+  @@index([sourceCurrency, targetCurrency, rateDate])
+}
+
+model HolidayCache {
+  id          String   @id @default(uuid()) @db.Uuid
+  countryCode String   @db.VarChar(2)
+  holidayDate DateTime @db.Date
+  name        String   @db.VarChar(120)
+  provider    String   @db.VarChar(40)
+  fetchedAt   DateTime @default(now())
+
+  @@unique([countryCode, holidayDate, name])
+  @@index([countryCode, holidayDate])
 }
 
 model SavingsGoal {

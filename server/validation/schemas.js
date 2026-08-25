@@ -34,6 +34,30 @@ export const transactionCreateSchema = z.object({
   type: z.enum(['income', 'expense', 'saving']),
   occurredAt: z.coerce.date().optional(),
   description: z.string().trim().max(500).optional().nullable(),
+  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional(),
+}).strict();
+export const transactionUpdateSchema = transactionCreateSchema.partial().refine((data) => Object.keys(data).length > 0, 'Provide at least one transaction change');
+
+export const protectedCostCreateSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  amount: positiveMoney,
+  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).default('AUD'),
+  category: z.enum(['HOUSING', 'GROCERIES', 'TRANSPORT', 'UTILITIES', 'INSURANCE', 'DEBT', 'SUBSCRIPTIONS', 'HEALTH', 'EDUCATION', 'REMITTANCE', 'OTHER_ESSENTIAL']),
+  classification: z.enum(['FIXED', 'ADJUSTABLE_ESSENTIAL', 'OPTIONAL']).default('FIXED'),
+  frequency: z.enum(['ONE_TIME', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']).default('ONE_TIME'),
+  nextDueDate: z.coerce.date(),
+  enabled: z.boolean().default(true),
+}).strict();
+export const protectedCostUpdateSchema = protectedCostCreateSchema.partial().refine((data) => Object.keys(data).length > 0, 'Provide at least one protected-cost change');
+
+export const paydayConfigurationSchema = z.object({
+  currentBalance: z.coerce.number().finite().min(-100000000).max(100000000),
+  nextPayday: z.coerce.date(),
+  paydayConfirmed: z.boolean(),
+  expectedIncome: money.default(0),
+  incomeFrequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY']),
+  safetyBuffer: money.default(0),
+  holidayPaydayRule: z.enum(['PREVIOUS_BUSINESS_DAY', 'NEXT_BUSINESS_DAY', 'SAME_DATE', 'MANUAL']).optional().nullable(),
 }).strict();
 
 export const goalCreateSchema = z.object({

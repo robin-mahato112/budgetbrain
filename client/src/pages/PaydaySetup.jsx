@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarDays, Save, Upload } from 'lucide-react';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
@@ -9,15 +9,30 @@ import { budgetService } from '../services/budgetService';
 
 export default function PaydaySetup() {
   const { addTransaction, refreshTransactions } = useFinance();
-  const [form, setForm] = useState({ balance: '', payday: '', payAmount: '', frequency: 'weekly', confidence: 'confirmed' });
+  const [form, setForm] = useState({ balance: '', payday: '', payAmount: '', safetyBuffer: '0', frequency: 'weekly', confidence: 'confirmed' });
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [status, setStatus] = useState('');
+  const [forecast, setForecast] = useState(null);
+
+  useEffect(() => {
+    budgetService.getPayday?.().then((data) => {
+      if (!data?.nextPayday && !data?.expectedDate) return;
+      setForm({
+        balance: String(data.currentBalance ?? ''), payday: String(data.nextPayday || data.expectedDate || '').slice(0, 10),
+        payAmount: String(data.expectedIncome ?? ''), safetyBuffer: String(data.safetyBuffer ?? 0),
+        frequency: String(data.incomeFrequency || 'WEEKLY').toLowerCase(), confidence: data.paydayConfirmed ? 'confirmed' : 'expected',
+      });
+      setForecast(data);
+    }).catch(() => {});
+  }, []);
 
   const save = async (event) => {
     event.preventDefault();
-    const amount = Number(form.payAmount);
-    if (Number.isFinite(amount) && amount > 0) {
+    const amount = Number(form.payAmount || 0);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.payday)) {
+      // Retain the legacy free-text flow for existing users, but authoritative forecasting requires an ISO date.
+      if (Number.isFinite(amount) && amount > 0) {
       const result = await addTransaction({
         merchant: 'Expected pay',
         category: 'Income',
@@ -29,7 +44,26 @@ export default function PaydaySetup() {
         return;
       }
       await refreshTransactions();
+      }
+      setStatus('Use a YYYY-MM-DD payday to save it to the financial engine.');
+      return;
     }
+      try {
+        const nextForecast = await budgetService.savePayday({
+          currentBalance: Number(form.balance), nextPayday: form.payday, paydayConfirmed: form.confidence === 'confirmed',
+          expectedIncome: amount, incomeFrequency: form.frequency.toUpperCase(), safetyBuffer: Number(form.safetyBuffer || 0),
+          holidayPaydayRule: forecast?.behaviour || null,
+        });
+        setForecast(nextForecast);
+        if (nextForecast.requiresConfirmation) {
+          setStatus(`Your payday falls on ${nextForecast.holiday}. Confirm how your employer handles public holidays.`);
+          return;
+        }
+        await refreshTransactions();
+      } catch (error) {
+        setStatus(error.response?.data?.message || 'Payday details could not be saved.');
+        return;
+      }
     setStatus('Payday setup saved. Dashboard calculations will use your latest income and transactions.');
   };
 
@@ -50,7 +84,16 @@ export default function PaydaySetup() {
           <form className="settings-form" onSubmit={save}>
             <Input label="Current balance" type="number" step="0.01" value={form.balance} onChange={(event) => setForm((current) => ({ ...current, balance: event.target.value }))} placeholder="900" />
             <Input label="Next payday" value={form.payday} onChange={(event) => setForm((current) => ({ ...current, payday: event.target.value }))} placeholder="Friday" />
+            <small>Use YYYY-MM-DD to enable public-holiday checks.</small>
+            {forecast?.requiresConfirmation && (
+              <label>Your payday falls on {forecast.holiday}. When do you normally receive pay?
+                <select value={forecast.behaviour || ''} onChange={(event) => setForecast((current) => ({ ...current, behaviour: event.target.value }))}>
+                  <option value="">Choose one</option><option value="PREVIOUS_BUSINESS_DAY">Previous business day</option><option value="NEXT_BUSINESS_DAY">Next business day</option><option value="SAME_DATE">Same date</option><option value="MANUAL">I'll confirm manually</option>
+                </select>
+              </label>
+            )}
             <Input label="Expected pay amount" type="number" step="0.01" value={form.payAmount} onChange={(event) => setForm((current) => ({ ...current, payAmount: event.target.value }))} placeholder="1400" />
+            <Input label="Safety buffer" type="number" min="0" step="0.01" value={form.safetyBuffer} onChange={(event) => setForm((current) => ({ ...current, safetyBuffer: event.target.value }))} placeholder="100" />
             <label>Income frequency
               <select value={form.frequency} onChange={(event) => setForm((current) => ({ ...current, frequency: event.target.value }))}>
                 <option value="weekly">Weekly</option>

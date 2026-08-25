@@ -1,4 +1,5 @@
 import { cleanCategory } from './transactionImportService.js';
+import { calculateConfidence, calculateSafeToSpend } from './safeToSpendService.js';
 
 const number = (value) => Number(value || 0);
 
@@ -303,12 +304,19 @@ function buildDebtPressure({ debts, monthlyIncome, debtRepayments }) {
 }
 
 function buildMoneyMode({ currentBalance, essentialsSpending, debtRepayments, debtCategorySpending = 0, committedBeforePayday, emergencyDays, monthlyIncome, monthlyExpenses, spendingChangePercent, moneyLeaks, debtPressure, hasExpenseData, nextPayday = 'Not set' }) {
-  const protectedMoney = Math.max(0, committedBeforePayday + debtRepayments + estimateBasicFoodAndTransport(essentialsSpending, committedBeforePayday + debtCategorySpending));
+  const basicEssentials = estimateBasicFoodAndTransport(essentialsSpending, committedBeforePayday + debtCategorySpending);
+  const calculation = calculateSafeToSpend({
+    currentBalance,
+    obligations: [
+      { description: 'Upcoming committed payments', amount: committedBeforePayday, kind: 'FIXED', dueDate: nextPayday },
+      { description: 'Debt payments', amount: debtRepayments, kind: 'FIXED', dueDate: nextPayday },
+      { description: 'Food and transport allowance', amount: basicEssentials, kind: 'ESSENTIAL', dueDate: nextPayday },
+    ].filter((item) => item.amount > 0),
+  });
+  const protectedMoney = calculation.protectedMoney;
   const protectedMoneyMissing = protectedMoney <= 0 && (hasExpenseData || monthlyIncome > 0);
-  const guiltFreeSpending = Math.max(0, currentBalance - protectedMoney);
-  const recoveryGap = currentBalance < 0 || currentBalance - protectedMoney < 0
-    ? Math.abs(Math.min(0, currentBalance)) + Math.max(0, protectedMoney - Math.max(0, currentBalance))
-    : 0;
+  const guiltFreeSpending = calculation.safeToSpend;
+  const recoveryGap = calculation.recoveryGap;
   const pressureReasons = [];
   const lowSafeSpend = monthlyIncome > 0 && guiltFreeSpending <= monthlyIncome * 0.08;
 
@@ -466,17 +474,23 @@ function buildConfidenceLevel({ transactions, moneyMode, balanceSnapshot }) {
     return { level: 'Not Ready', reason: 'Payday, balance, income, or protected costs are missing.' };
   }
   const latestSource = transactions
-    .filter((item) => ['demo_bank', 'demo_balance', 'csv'].includes(item.source))
+    .filter((item) => ['demo_bank', 'demo_balance', 'csv', 'ynab'].includes(item.source))
     .sort((a, b) => new Date(b.createdAt || b.occurredAt) - new Date(a.createdAt || a.occurredAt))[0];
   const lastUpdated = balanceSnapshot?.lastSyncedAt || latestSource?.createdAt || latestSource?.occurredAt || null;
-  if (!lastUpdated) {
-    return { level: 'Low', reason: 'No recent bank, CSV, or balance update is available.', lastUpdatedAt: null };
-  }
-  const ageHours = (Date.now() - new Date(lastUpdated).getTime()) / 36e5;
+  const ageHours = lastUpdated ? (Date.now() - new Date(lastUpdated).getTime()) / 36e5 : Infinity;
+  const base = calculateConfidence({
+    transactionsCurrent: ageHours <= 72,
+    paydayConfirmed: moneyMode.nextPayday && moneyMode.nextPayday !== 'Not set',
+    confirmedEssentials: moneyMode.protectedMoney > 0 ? 1 : 0,
+    unconfirmedObligations: 0,
+    uncategorisedTransactions: transactions.filter((item) => ['Uncategorised', 'Mixed / Needs Review'].includes(item.category)).length,
+  });
+  const level = base.level[0] + base.level.slice(1).toLowerCase();
+  if (!lastUpdated) return { level: 'Low', reason: 'No recent Demo Bank, YNAB, CSV, or balance update is available.', lastUpdatedAt: null, checks: base.checks };
   if (ageHours <= 24) {
-    return { level: 'High', reason: 'Demo bank, CSV, or balance data was updated recently.', lastUpdatedAt: lastUpdated };
+    return { level, reason: 'Transactions were updated recently and calculation inputs were checked.', lastUpdatedAt: lastUpdated, checks: base.checks };
   }
-  return { level: ageHours <= 72 ? 'Medium' : 'Low', reason: 'Some data exists, but it may need an update.', lastUpdatedAt: lastUpdated };
+  return { level: ageHours <= 72 && level !== 'Low' ? 'Medium' : 'Low', reason: 'Some data exists, but it may need an update.', lastUpdatedAt: lastUpdated, checks: base.checks };
 }
 
 function buildMoneyPressure({ moneyMode, confidence, monthlyIncome, monthlyExpenses, moneyLeaks, debtPressure }) {

@@ -6,7 +6,7 @@ import { useFinance } from '../../hooks/useFinance';
 
 const titles = {
   '/': 'Dashboard',
-  '/connect-bank': 'Connect Bank',
+  '/connect-bank': 'Financial Sources',
   '/payday-setup': 'Payday Setup',
   '/protected-essentials': 'Protected Essentials',
   '/transactions': 'Transactions',

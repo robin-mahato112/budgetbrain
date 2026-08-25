@@ -22,6 +22,13 @@ const schema = z.object({
   AI_DAILY_LIMIT: z.coerce.number().int().positive().default(20),
   AI_MONTHLY_LIMIT: z.coerce.number().int().positive().default(300),
   LOG_LEVEL: z.string().default('info'),
+  SERVER_URL: z.string().url().default('http://localhost:5000'),
+  INTEGRATION_ENCRYPTION_KEY: z.string().min(32).optional().or(z.literal('')),
+  YNAB_CLIENT_ID: z.string().optional().or(z.literal('')),
+  YNAB_CLIENT_SECRET: z.string().optional().or(z.literal('')),
+  YNAB_REDIRECT_URI: z.string().url().optional().or(z.literal('')),
+  CURRENCY_API_URL: z.string().url().default('https://api.frankfurter.app'),
+  HOLIDAY_API_URL: z.string().url().default('https://date.nager.at/api/v3'),
 });
 
 const parsed = schema.safeParse(process.env);

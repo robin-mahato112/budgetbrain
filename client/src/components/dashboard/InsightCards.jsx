@@ -9,7 +9,7 @@ export default function InsightCards() {
   const mode = insights.moneyMode || {};
 
   const cards = [
-    { label: 'Demo Bank Status', value: insights.demoBank?.connected ? 'Connected' : 'Not connected', detail: insights.demoBank?.message || 'Connect demo bank or import CSV', icon: Landmark },
+    { label: 'Demo Bank Status', value: insights.demoBank?.connected ? 'Demo Bank Connected' : 'Not connected', detail: insights.demoBank?.message || 'Connect demo bank or import CSV', icon: Landmark },
     { label: 'Protected Essentials', value: formatCurrency(mode.protectedMoney || 0), detail: 'protected before payday', icon: Shield },
     { label: 'Money Pressure', value: insights.moneyPressure?.level || 'Not Ready', detail: insights.moneyPressure?.reason || 'Setup needed', icon: Waves },
     { label: 'Recent Transactions', value: String(insights.importedTransactions || 0), detail: 'imported or synced', icon: ListChecks },

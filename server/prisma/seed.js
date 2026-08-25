@@ -8,17 +8,25 @@ const main = async () => {
     throw new Error('Production seeding is disabled. Set ALLOW_PRODUCTION_SEED=true only for an intentional demo environment.');
   }
 
-  const passwordHash = await bcrypt.hash('DemoPassword123!', 12);
+  const passwordHash = await bcrypt.hash('DemoPassword123', 12);
   const user = await prisma.user.upsert({
     where: { email: 'demo@budgetbrain.local' },
-    update: {},
+    update: { name: 'Demo User', passwordHash, currentBalance: 2450, expectedIncome: 3600, incomeFrequency: 'FORTNIGHTLY', safetyBuffer: 250, nextPayday: addDays(10), paydayConfirmed: true },
     create: {
       name: 'Demo User',
       email: 'demo@budgetbrain.local',
       passwordHash,
+      currentBalance: 2450,
+      expectedIncome: 3600,
+      incomeFrequency: 'FORTNIGHTLY',
+      safetyBuffer: 250,
+      nextPayday: addDays(10),
+      paydayConfirmed: true,
     },
   });
 
+  await prisma.protectedCost.deleteMany({ where: { userId: user.id } });
+  await prisma.recurringTransactionPattern.deleteMany({ where: { userId: user.id } });
   await prisma.transaction.deleteMany({ where: { userId: user.id } });
   await prisma.budget.deleteMany({ where: { userId: user.id } });
   await prisma.savingsGoal.deleteMany({ where: { userId: user.id } });
@@ -44,6 +52,12 @@ const main = async () => {
     ],
   });
 
+  await prisma.protectedCost.createMany({ data: [
+    { userId: user.id, name: 'Rent', category: 'HOUSING', classification: 'FIXED', amount: 950, originalAmount: 950, currency: 'AUD', frequency: 'FORTNIGHTLY', nextDueDate: addDays(5) },
+    { userId: user.id, name: 'Groceries', category: 'GROCERIES', classification: 'ADJUSTABLE_ESSENTIAL', amount: 180, originalAmount: 180, currency: 'AUD', frequency: 'WEEKLY', nextDueDate: addDays(3) },
+    { userId: user.id, name: 'Phone plan', category: 'UTILITIES', classification: 'FIXED', amount: 49, originalAmount: 49, currency: 'AUD', frequency: 'MONTHLY', nextDueDate: addDays(8) },
+  ] });
+
   await prisma.savingsGoal.create({
     data: { userId: user.id, name: 'Emergency fund', target: 10000, current: 2500, monthly: 400 },
   });
@@ -53,6 +67,8 @@ const main = async () => {
 
   console.log('Created fake demo data for demo@budgetbrain.local');
 };
+
+function addDays(days) { const date = new Date(); date.setUTCHours(0, 0, 0, 0); date.setUTCDate(date.getUTCDate() + days); return date; }
 
 main()
   .finally(() => prisma.$disconnect())
