@@ -3,12 +3,14 @@ import {
   connectDemoBank,
   disconnectDemoBank,
   getDemoBalances,
-  getDemoTransactions,
   listDemoBankScenarios,
   syncDemoAccounts,
 } from './bankProviders/mockBankProvider.js';
+import { DemoBankProvider } from './financialSources/DemoBankProvider.js';
+import { toPrismaTransaction } from './transactionNormalizationService.js';
 
 const demoSources = ['demo_bank', 'demo_balance'];
+const demoProvider = new DemoBankProvider();
 
 export function getDemoScenarios() {
   return listDemoBankScenarios();
@@ -50,7 +52,7 @@ export async function disconnectBank(userId) {
 async function syncScenario(userId, connection) {
   const [balances, transactions] = await Promise.all([
     getDemoBalances(connection),
-    getDemoTransactions(connection),
+    demoProvider.getTransactions(connection),
   ]);
   const balance = balances[0]?.balance || 0;
   const syncedAt = new Date();
@@ -70,16 +72,7 @@ async function syncScenario(userId, connection) {
         occurredAt: syncedAt,
         source: 'demo_balance',
       },
-      ...transactions.map((transaction) => ({
-        userId,
-        merchant: transaction.merchant,
-        description: transaction.description,
-        category: transaction.category,
-        amount: Math.abs(transaction.amount),
-        type: transaction.type,
-        occurredAt: transaction.occurredAt,
-        source: 'demo_bank',
-      })),
+      ...transactions.map((transaction) => toPrismaTransaction(userId, transaction)),
     ],
   });
 

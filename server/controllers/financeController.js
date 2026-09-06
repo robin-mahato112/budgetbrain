@@ -10,6 +10,11 @@ import {
   uploadAndExtract,
 } from '../services/documentExtractionService.js';
 import { cleanCategory, isUnclearDescription, parseTransactionCsv } from '../services/transactionImportService.js';
+import { confirmCsvImport, createCsvPreview, deleteCsvImport, listCsvImports } from '../services/csvImportService.js';
+import { TRANSACTION_CATEGORIES, categoryLabel, merchantKey } from '../services/categorisationService.js';
+import { detectRecurringTransactions } from '../services/recurrenceService.js';
+import { convertCurrency } from '../services/currencyService.js';
+import { forecastPayday, holidaysFor } from '../services/holidayService.js';
 
 const number = (value) => Number(value);
 const monthStart = (value = new Date()) => monthBounds(value).start;
@@ -140,20 +145,94 @@ export async function createTransaction(req, res) {
   if (isUnclearDescription(clearText)) {
     throw new AppError(400, 'UNCLEAR_TRANSACTION_DESCRIPTION', 'Please enter a clearer description, like Lunch, Rent, or Salary.');
   }
+  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { baseCurrency: true } });
+  const sourceCurrency = req.body.currency || user?.baseCurrency || 'AUD';
+  const conversion = await convertCurrency({ amount: Math.abs(req.body.amount), sourceCurrency, targetCurrency: user?.baseCurrency || 'AUD' });
+  const { currency: ignoredCurrency, ...body } = req.body;
   const transaction = await prisma.transaction.create({
     data: {
-      ...req.body,
+      ...body,
       merchant: String(req.body.merchant || '').trim(),
       description: req.body.description ? String(req.body.description).trim() : null,
       category: cleanCategory(req.body.category, clearText, req.body.type),
       type: req.body.type.toUpperCase(),
-      amount: Math.abs(req.body.amount),
+      amount: conversion.convertedAmount,
+      currency: conversion.targetCurrency,
+      originalAmount: conversion.originalAmount,
+      originalCurrency: conversion.sourceCurrency,
+      exchangeRate: conversion.exchangeRate,
+      rateDate: conversion.rateDate,
       occurredAt: req.body.occurredAt ? new Date(req.body.occurredAt) : new Date(),
       userId: req.user.id,
       source: 'manual',
     },
   });
   res.status(201).json({ ...transaction, amount: signedAmount(transaction), type: transaction.type.toLowerCase() });
+}
+
+export async function getPaydayForecast(req, res) {
+  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { nextPayday: true, paydayConfirmed: true, holidayPaydayRule: true, countryCode: true, currentBalance: true, expectedIncome: true, incomeFrequency: true, safetyBuffer: true } });
+  if (!user?.nextPayday) return res.json({ nextPayday: null, paydayConfirmed: false, requiresConfirmation: false });
+  const holidays = await holidaysFor(user.countryCode, user.nextPayday.getUTCFullYear());
+  res.json({ ...forecastPayday(user.nextPayday, holidays, user.holidayPaydayRule), paydayConfirmed: user.paydayConfirmed, countryCode: user.countryCode, currentBalance: number(user.currentBalance), expectedIncome: number(user.expectedIncome), incomeFrequency: user.incomeFrequency, safetyBuffer: number(user.safetyBuffer) });
+}
+
+export async function savePaydayForecast(req, res) {
+  const nextPayday = new Date(req.body.nextPayday);
+  const behaviour = req.body?.holidayPaydayRule ? String(req.body.holidayPaydayRule).toUpperCase() : null;
+  if (behaviour && !['PREVIOUS_BUSINESS_DAY', 'NEXT_BUSINESS_DAY', 'SAME_DATE', 'MANUAL'].includes(behaviour)) throw new AppError(400, 'INVALID_PAYDAY_RULE', 'Payday holiday preference is invalid');
+  const user = await prisma.user.update({ where: { id: req.user.id }, data: {
+    nextPayday, paydayConfirmed: req.body.paydayConfirmed, holidayPaydayRule: behaviour,
+    currentBalance: req.body.currentBalance, expectedIncome: req.body.expectedIncome,
+    incomeFrequency: req.body.incomeFrequency, safetyBuffer: req.body.safetyBuffer,
+  } });
+  const holidays = await holidaysFor(user.countryCode, nextPayday.getUTCFullYear());
+  res.json({ ...forecastPayday(nextPayday, holidays, behaviour), paydayConfirmed: user.paydayConfirmed, countryCode: user.countryCode, currentBalance: number(user.currentBalance), expectedIncome: number(user.expectedIncome), incomeFrequency: user.incomeFrequency, safetyBuffer: number(user.safetyBuffer) });
+}
+
+export async function getTransaction(req, res) {
+  const transaction = await prisma.transaction.findFirst({ where: { id: req.params.id, userId: req.user.id, deletedAt: null } });
+  if (!transaction) throw new AppError(404, 'TRANSACTION_NOT_FOUND', 'Transaction not found');
+  res.json({ ...transaction, amount: signedAmount(transaction), type: transaction.type.toLowerCase() });
+}
+
+export async function updateTransaction(req, res) {
+  const existing = await prisma.transaction.findFirst({ where: { id: req.params.id, userId: req.user.id, deletedAt: null } });
+  if (!existing) throw new AppError(404, 'TRANSACTION_NOT_FOUND', 'Transaction not found');
+  const type = req.body.type ? req.body.type.toUpperCase() : existing.type;
+  const merchant = req.body.merchant === undefined ? existing.merchant : String(req.body.merchant).trim();
+  const description = req.body.description === undefined ? existing.description : req.body.description;
+  const clearText = description || merchant;
+  if (isUnclearDescription(clearText)) throw new AppError(400, 'UNCLEAR_TRANSACTION_DESCRIPTION', 'Please enter a clearer transaction description');
+  const data = {
+    ...(req.body.merchant !== undefined ? { merchant } : {}),
+    ...(req.body.description !== undefined ? { description } : {}),
+    ...(req.body.amount !== undefined ? { amount: Math.abs(req.body.amount), originalAmount: Math.abs(req.body.amount) } : {}),
+    ...(req.body.type !== undefined ? { type } : {}),
+    ...(req.body.occurredAt !== undefined ? { occurredAt: new Date(req.body.occurredAt) } : {}),
+    ...(req.body.category !== undefined || req.body.merchant !== undefined || req.body.description !== undefined || req.body.type !== undefined
+      ? { category: cleanCategory(req.body.category || existing.category, clearText, type.toLowerCase()) } : {}),
+  };
+  const transaction = await prisma.transaction.update({ where: { id: existing.id }, data });
+  res.json({ ...transaction, amount: signedAmount(transaction), type: transaction.type.toLowerCase() });
+}
+
+export async function markTransactionRecurring(req, res) {
+  const transaction = await prisma.transaction.findFirst({ where: { id: req.params.id, userId: req.user.id, type: 'EXPENSE', deletedAt: null } });
+  if (!transaction) throw new AppError(404, 'TRANSACTION_NOT_FOUND', 'Expense transaction not found');
+  const cadence = String(req.body?.cadence || 'MONTHLY').toUpperCase();
+  if (!['WEEKLY', 'FORTNIGHTLY', 'MONTHLY'].includes(cadence)) throw new AppError(400, 'INVALID_CADENCE', 'Recurring cadence is invalid');
+  const nextExpectedAt = new Date(transaction.occurredAt);
+  if (cadence === 'WEEKLY') nextExpectedAt.setUTCDate(nextExpectedAt.getUTCDate() + 7);
+  if (cadence === 'FORTNIGHTLY') nextExpectedAt.setUTCDate(nextExpectedAt.getUTCDate() + 14);
+  if (cadence === 'MONTHLY') nextExpectedAt.setUTCMonth(nextExpectedAt.getUTCMonth() + 1);
+  const key = merchantKey(transaction.merchant || transaction.description);
+  const pattern = await prisma.recurringTransactionPattern.upsert({
+    where: { userId_merchantKey_cadence: { userId: req.user.id, merchantKey: key, cadence } },
+    create: { userId: req.user.id, merchantKey: key, description: transaction.merchant, amount: transaction.amount, currency: transaction.currency, cadence, nextExpectedAt, confidence: 1, protectionStatus: 'PENDING' },
+    update: { description: transaction.merchant, amount: transaction.amount, nextExpectedAt, protectionStatus: 'PENDING' },
+  });
+  res.status(201).json({ ...pattern, amount: Number(pattern.amount), confidence: Number(pattern.confidence) });
 }
 
 export async function importTransactions(req, res) {
@@ -166,6 +245,33 @@ export async function importTransactions(req, res) {
       return acc;
     }, {}),
   });
+}
+
+export async function previewCsvImport(req, res) {
+  const mappingHeader = req.headers['x-column-mapping'];
+  let mapping = {};
+  if (mappingHeader) {
+    try { mapping = JSON.parse(String(mappingHeader)); }
+    catch { throw new AppError(400, 'CSV_INVALID_MAPPING', 'CSV column mapping must be valid JSON'); }
+  }
+  const preview = await createCsvPreview(req.user.id, {
+    csvText: req.body,
+    fileName: String(req.headers['x-file-name'] || 'transactions.csv'),
+    mapping,
+  });
+  res.status(201).json(preview);
+}
+
+export async function confirmCsvImportPreview(req, res) {
+  res.status(201).json(await confirmCsvImport(req.user.id, req.params.id));
+}
+
+export async function getCsvImports(req, res) {
+  res.json(await listCsvImports(req.user.id));
+}
+
+export async function removeCsvImport(req, res) {
+  res.json(await deleteCsvImport(req.user.id, req.params.id, req.query.deleteTransactions === 'true'));
 }
 
 export async function getTransactionInsights(req, res) {
@@ -308,6 +414,47 @@ export async function deleteTransaction(req, res) {
   const deleted = await prisma.transaction.deleteMany({ where: { id: req.params.id, userId: req.user.id } });
   if (!deleted.count) throw new AppError(404, 'TRANSACTION_NOT_FOUND', 'Transaction not found');
   res.status(204).end();
+}
+
+export async function updateTransactionCategory(req, res) {
+  const category = String(req.body?.category || '').toUpperCase();
+  if (!TRANSACTION_CATEGORIES.includes(category)) throw new AppError(400, 'INVALID_CATEGORY', 'Select a valid BudgetBrain category');
+  const transaction = await prisma.transaction.findFirst({ where: { id: req.params.id, userId: req.user.id } });
+  if (!transaction) throw new AppError(404, 'TRANSACTION_NOT_FOUND', 'Transaction not found');
+  const key = merchantKey(transaction.merchant || transaction.description);
+  const updated = await prisma.$transaction([
+    prisma.transaction.update({ where: { id: transaction.id }, data: { category: categoryLabel(category) } }),
+    prisma.userCategoryRule.upsert({
+      where: { userId_merchantKey: { userId: req.user.id, merchantKey: key } },
+      create: { userId: req.user.id, merchantKey: key, category }, update: { category },
+    }),
+  ]);
+  res.json({ ...updated[0], categoryCode: category, remembered: true });
+}
+
+export async function listRecurringPatterns(req, res) {
+  const transactions = await prisma.transaction.findMany({
+    where: { userId: req.user.id, type: 'EXPENSE', deletedAt: null }, orderBy: { occurredAt: 'asc' }, take: 1000,
+  });
+  const detected = detectRecurringTransactions(transactions);
+  for (const pattern of detected) {
+    await prisma.recurringTransactionPattern.upsert({
+      where: { userId_merchantKey_cadence: { userId: req.user.id, merchantKey: pattern.merchantKey, cadence: pattern.cadence } },
+      create: { userId: req.user.id, ...pattern, occurrences: undefined },
+      update: { description: pattern.description, amount: pattern.amount, currency: pattern.currency, nextExpectedAt: pattern.nextExpectedAt, confidence: pattern.confidence },
+    });
+  }
+  const patterns = await prisma.recurringTransactionPattern.findMany({ where: { userId: req.user.id }, orderBy: { nextExpectedAt: 'asc' } });
+  res.json(patterns.map((item) => ({ ...item, amount: Number(item.amount), confidence: Number(item.confidence) })));
+}
+
+export async function updateRecurringPattern(req, res) {
+  const status = String(req.body?.protectionStatus || '').toUpperCase();
+  if (!['PROTECTED', 'IGNORED', 'PENDING'].includes(status)) throw new AppError(400, 'INVALID_PROTECTION_STATUS', 'Protection status is invalid');
+  const exists = await prisma.recurringTransactionPattern.findFirst({ where: { id: req.params.id, userId: req.user.id } });
+  if (!exists) throw new AppError(404, 'RECURRING_PATTERN_NOT_FOUND', 'Recurring payment was not found');
+  const updated = await prisma.recurringTransactionPattern.update({ where: { id: exists.id }, data: { protectionStatus: status } });
+  res.json({ ...updated, amount: Number(updated.amount), confidence: Number(updated.confidence) });
 }
 
 export async function listSavingsGoals(req, res) {

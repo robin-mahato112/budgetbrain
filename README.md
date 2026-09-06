@@ -1,339 +1,322 @@
-# BudgetBrain AI
+# BudgetBrain
 
-BudgetBrain is a Payday Guardrail + Money Pressure app. Banking apps show your balance, but your balance is not the same as spendable money. BudgetBrain protects essentials first, then shows what is safe to spend before payday.
+BudgetBrain is a full-stack payday guardrail that helps people understand how much money is genuinely safe to spend before their next payday.
 
-> BudgetBrain is an educational tool, not a licensed financial adviser. AI explanations are supportive summaries of backend calculations, not professional financial advice.
+Bank balances alone do not account for rent, food, transport, bills, debt, or other essentials. BudgetBrain protects those commitments first and then calculates a practical safe-to-spend amount.
 
-BudgetBrain uses one transparent formula:
+> BudgetBrain is an educational tool, not a licensed financial adviser. Its AI features explain application calculations and do not provide professional financial advice.
+
+## Core calculation
 
 ```text
-Safe to Spend = Current Balance + Confirmed Income Before Payday - Protected Money Before Payday
+Safe to Spend = Current Balance
+              + Confirmed Income Before Payday
+              - Protected Money Before Payday
 ```
 
-AI is secondary. The backend calculates safe-to-spend, protected money, recovery gap and money mode. AI only explains those backend results in plain English using a safe summary.
+The backend is the source of truth for all financial calculations. AI is used only to explain the results in plain language.
 
-## Why this project matters
+For a local seeded demo, use `demo@budgetbrain.local` with password `DemoPassword123` after running `npm run db:seed`. All demo financial data is fictional.
 
-BudgetBrain demonstrates the kind of product engineering expected in a real SaaS codebase: secure authentication, relational data modeling, validation, rate limiting, error handling, privacy controls, automated verification, deployment configuration and a polished responsive interface. The goal is not just to show screens, but to show a maintainable path from local development to production deployment.
+## Preview
 
-## Project Summary
+![BudgetBrain dashboard in dark mode](docs/screenshots/dashboard-dark.png)
 
-BudgetBrain helps users answer one practical question: how much money is actually safe to spend before payday after rent, food, transport, bills, debt and essentials are protected?
+<details>
+  <summary>More screenshots</summary>
 
-The app supports demo bank sync, Payday Setup, Protected Essentials, Transactions, Mini Guard preview, Freedom/Watch/Recovery modes, Money Pressure, Can I Afford This, Smart Add, and small AI explanations.
+  ### Budget tracker
 
-## Real Problems This Project Solves
+  ![Budget tracker](docs/screenshots/budget-tracker.png)
 
-BudgetBrain AI is built around one everyday problem: people can see their bank balance, but they cannot easily see what is safe to spend before payday after essentials are protected.
+  ### Savings goals
 
-It focuses on:
+  ![Savings goals](docs/screenshots/savings-goals.png)
 
-- Surviving until payday.
-- Protecting rent, food, transport, bills, debt and essentials.
-- Avoiding accidental overspending.
-- Showing safe-to-spend clearly.
-- Showing Money Pressure calmly.
-- Helping users recover if they are short.
+  ### Debt payoff
 
-## Product Features Mapped To Problems
+  ![Debt payoff](docs/screenshots/debt-payoff.png)
 
-| Real Problem | BudgetBrain AI Feature |
-|---|---|
-| Real Problem | BudgetBrain AI Feature |
-|---|---|
-| Bank balance is not spendable money | Safe-to-Spend calculation |
-| Essentials need protection first | Protected Essentials |
-| Payday is close and money is tight | Money Pressure |
-| User is short before payday | Recovery Mode and short Recovery Plan |
-| Demo review needs realistic data | Demo Bank Connection |
-| User wants quick status | Mini Guard Preview |
-| Manual data entry is slow | CSV import and Smart Add preview |
-| Numbers need plain-English explanation | Explain This Number |
+  ### Settings
 
-## What I Built To Demonstrate
+  ![Settings](docs/screenshots/settings-overview.png)
+</details>
 
-This project demonstrates full-stack product engineering: authenticated user flows, provider-based demo bank sync, relational data modeling, validation, security middleware, AI provider integration, usage limits, testing, deployment configuration, privacy-aware account controls, CSV transaction import, safe-to-spend calculation and AI explanations.
+## Features
 
-## Demo Bank Connection
+- Secure registration and login with JWT authentication and bcrypt password hashing
+- Payday setup for balance, expected income, pay frequency, and next payday
+- Protected essentials for housing, food, transport, bills, debt, subscriptions, and buffers
+- Safe-to-spend and money-pressure calculations performed by the backend
+- Freedom, Watch, and Recovery modes with an actionable recovery plan
+- Demo bank connection with realistic scenarios and fictional transaction data
+- “Can I afford this?” purchase checks based on the user's current financial position
+- CSV transaction import with validation and keyword-based categorisation
+- Smart entry previews for receipts, payslips, bills, and quick-add sentences
+- Searchable transaction history with source and review status
+- AI explanations with daily and monthly usage limits
+- Data export and account deletion controls
+- Responsive light and dark themes
+- Flexible CSV preview, column mapping, validation, and duplicate detection
+- Optional YNAB sync with encrypted server-side token storage
+- Multi-currency protected items with cached exchange-rate fallback
+- Public-holiday payday warnings that require user confirmation
+- Recurring-payment detection with user-controlled protection status
 
-BudgetBrain includes a mock bank connection for demo and portfolio review.
+## Tech stack
 
-This does not connect to a real bank. It simulates bank syncing by importing realistic demo balances, income deposits, bills, debt repayments and transactions.
-
-The app is designed with a provider-based architecture so a real Open Banking provider could be added later.
-
-## Future Real Bank Integration
-
-A real production version would connect through an Open Banking / Consumer Data Right provider. BudgetBrain does not store real bank login credentials.
-
-## AI Role
-
-AI does not calculate financial truth. The backend calculates safe-to-spend, protected money, recovery gap and mode. AI only explains the result in plain English using a safe summary.
-
-## Live Demo
-
-Frontend: Coming soon
-Backend API: Coming soon
-
-## Demo Access
-
-Demo user: demo@budgetbrain.local
-Password: DemoPassword123
-
-Demo access will be enabled after deployment.
-
-## Product Preview
-
-Screenshots should focus on the final product surface:
-
-- Dashboard
-- Connect Bank
-- Payday Setup
-- Protected Essentials
-- Transactions
-- Mini Guard
-- Settings
-
-## Core Features
-
-- Secure registration, login and protected routes with JWT authentication.
-- Payday Guardrail dashboard with safe-to-spend, protected essentials, next payday, Money Pressure, confidence and last synced status.
-- Demo Bank Connection with Freedom, Watch, Recovery, Student Worker and Renter scenarios.
-- Mini Guard preview for quick safe-to-spend status.
-- CSV transaction import with backend validation and keyword auto-categorization.
-- Payday Setup for current balance, next payday, pay amount, income frequency and confidence.
-- Protected Essentials setup for rent, food basics, transport, phone/internet, insurance, debt, subscriptions and emergency buffer.
-- Money Pressure Check with Low, Medium, High and Critical levels.
-- Freedom Mode, Watch Mode and Recovery Mode based on protected money, safe-to-spend and recovery gap.
-- Short Recovery Plan when safe-to-spend or balance goes negative.
-- Can I Afford This checker for possible purchases, with mode-aware responses that avoid shame-based language.
-- Smart entry workflow for receipt, payslip, bill and CSV uploads with preview before saving.
-- Quick-add sentence parser for entries such as "I spent $25 on lunch and $60 on petrol today."
-- Searchable transaction table with source and review status.
-- Small AI explanations powered by Groq using safe summaries only.
-- Daily and monthly AI usage limits to control provider cost and abuse.
-- Compact Settings with Account, Security, Payday, Demo Bank, Data & Privacy, AI Settings and Notifications.
-- Responsive React UI with light/dark theme support.
-
-## Tech Stack
-
-| Area | Technology |
-|---|---|
-| Frontend | React 18, Vite, React Router, Axios, CSS modules/global styles |
-| Backend | Node.js, Express, Zod, Helmet, CORS, express-rate-limit |
-| Database | PostgreSQL, Prisma ORM, checked-in migrations |
-| Auth | bcrypt password hashing, JWT access tokens |
-| AI | Groq SDK |
-| Observability | Pino structured logs, optional Sentry |
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 18, Vite, React Router, Axios, Lucide React |
+| Backend | Node.js, Express, Zod, Helmet, Pino |
+| Database | PostgreSQL, Prisma ORM |
+| Authentication | JWT, bcrypt |
+| AI | Groq; optional Gemini document extraction |
 | Testing | Vitest, React Testing Library, Supertest |
-| Deployment | Render/Railway backend config, Vercel frontend config |
+| Deployment | Vercel, Render, Railway, Docker Compose |
 
 ## Architecture
 
-```text
-React Client
-     |
-     | REST API calls
-     v
-Express API
-     |
-     | Prisma ORM
-     v
-Prisma ORM
-     |
-     v
-PostgreSQL Database
-
-Express API ---> Groq AI API
-Express API ---> Gemini/OCR extraction
-Express API ---> Mock Bank Provider
+```mermaid
+flowchart TD
+    DEMO[Demo Bank] --> N[Transaction Normalizer]
+    YNAB[YNAB] --> N
+    CSV[Bank CSV] --> N
+    N --> C[Deterministic Categorisation]
+    C --> R[Recurring Payment Detection]
+    R --> S[Safe-to-Spend Engine]
+    FX[Cached Currency Rates] --> S
+    H[Cached Public Holidays] --> P[Payday Forecast]
+    P --> S
+    E[Protected Essentials] --> S
+    S --> D[Dashboard]
 ```
 
-The API stores users, chats/messages for small AI explanations, transactions, demo bank data, uploaded-document previews and AI usage records in PostgreSQL. User-owned data is connected through database relations and cascades, so account deletion removes associated records.
+The API owns authentication, finance calculations, transaction imports, demo-bank synchronisation, AI usage enforcement, and privacy operations. User-owned records are connected through relational constraints and cascade when an account is deleted.
 
-Backend services include Auth, Income, Protected Money, Transaction, Demo Bank Provider, Bank Sync, Safe-to-Spend Engine, AI Explanation, Document Extraction, and Privacy / Export / Delete.
+## Financial sources
 
-Backend calculations are the source of truth. AI explains backend results but does not decide financial values.
+All provider data passes through one normalized transaction contract before categorisation or calculation. Provider-specific amounts, dates, deleted records, accounts, currencies, and identifiers do not leak into the safe-to-spend engine.
 
-Detailed docs:
+### Demo Bank
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [System Sequence Diagrams](docs/SSD.md)
-- [Data Design](docs/DATA_DESIGN.md)
-- [Bank Sync](docs/BANK_SYNC.md)
-- [Mockups](docs/MOCKUPS.md)
-- [User Flow](docs/USER_FLOW.md)
+Demo Bank uses fictional scenarios and requires no third-party account. It is clearly labelled as simulated data and never asks for bank credentials.
 
-## Engineering Decisions
+### YNAB
 
-- **PostgreSQL + Prisma:** relational finance data benefits from constraints, indexed user ownership, migrations and predictable joins. Prisma keeps the data model explicit and reviewable.
-- **JWT authentication:** short-lived access tokens keep the API stateless while still protecting every finance, chat, export and delete route.
-- **AI usage limits:** daily and monthly limits are enforced before provider calls to reduce abuse, control cost and make AI behavior more production-aware.
-- **Privacy controls:** account export and account deletion are included because finance products must treat user data lifecycle as a first-class feature.
-- **AI context tradeoff:** the assistant receives summarized monthly totals and category signals, not raw account identity or unnecessary personal details.
-- **CSV import tradeoff:** CSV upload supports a practical fintech workflow without needing real bank integrations or storing bank credentials.
-- **Document extraction tradeoff:** the current portfolio version uses a safe extraction preview workflow and confirmation gate. Production OCR/storage would move pending uploads to encrypted object storage with durable database records.
+YNAB is optional. Backend OAuth lists available YNAB plans as budgets, imports accounts and transactions, and supports incremental sync through YNAB server knowledge. Tokens are encrypted before storage and never returned to the client.
 
-## Local Setup
-
-Requirements:
-
-- Node.js 20+
-- Docker Desktop, or a local PostgreSQL 14+ database
-- A Groq API key
-
-## Groq AI Setup
-
-BudgetBrain AI uses Groq for AI-powered summaries and financial insights.
-
-Create a Groq API key from Groq Console, then add it to the backend `.env` file:
+Create a YNAB OAuth application, configure its callback to match `YNAB_REDIRECT_URI`, and set:
 
 ```env
-GROQ_API_KEY=your_key_here
+YNAB_CLIENT_ID=
+YNAB_CLIENT_SECRET=
+YNAB_REDIRECT_URI=http://localhost:5000/api/integrations/ynab/callback
+INTEGRATION_ENCRYPTION_KEY=replace_with_a_unique_secret_of_at_least_32_characters
+```
+
+Without these credentials, BudgetBrain continues to work and shows YNAB as unconfigured.
+
+### Bank CSV
+
+CSV import detects common Date, Description, Amount, Debit, Credit, Category, Currency, and Account headers. Unfamiliar files display a mapping UI. The preview reports total, valid, duplicate, and invalid rows; invalid rows are shown rather than silently discarded.
+
+## Currency conversion
+
+Users choose a base currency and can enter protected items in another currency. BudgetBrain preserves the original amount and currency, conversion rate, converted amount, and rate date. Rates are fetched behind a provider abstraction and cached in PostgreSQL. A recent cached rate is used when the provider is unavailable and stale conversions are marked as estimated.
+
+## Payday and public holidays
+
+Payday dates are checked through a cached holiday-provider abstraction for the user's country. A holiday never changes payday automatically. BudgetBrain asks whether pay normally arrives on the previous business day, next business day, same date, or should be confirmed manually.
+
+## Safe-to-Spend calculation
+
+The central financial-state service is the authoritative backend calculation path. It uses the persisted current balance and next payday, projects enabled protected-cost occurrences only through that payday, subtracts fixed and adjustable essentials plus the safety buffer, and counts recurring candidates only after the user marks them protected. Merchant, amount, date, and explicit pattern links prevent the same obligation being counted twice. A negative result is preserved as a shortfall and activates Recovery Mode.
+
+The dashboard consumes `GET /api/finance/financial-state`. Payday setup, protected-cost CRUD, transaction CRUD, and recurring-payment decisions all persist first and then refresh this same state, so dashboard amounts, pressure, recovery guidance, and confidence stay consistent.
+
+More detailed design documentation is available in [`docs`](docs):
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [System sequence diagrams](docs/SSD.md)
+- [Data design](docs/DATA_DESIGN.md)
+- [Bank sync design](docs/BANK_SYNC.md)
+- [User flow](docs/USER_FLOW.md)
+- [UI mockups](docs/MOCKUPS.md)
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 20 or newer
+- Docker Desktop, or PostgreSQL 14 or newer
+- A Groq API key only if you want to use AI explanations
+- A Gemini API key only if you want to use Gemini-powered document extraction
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/robin-mahato112/budgetbrain.git
+cd budgetbrain
+npm run install:all
+```
+
+### 2. Configure the environment
+
+Copy the example files:
+
+```bash
+cp server/.env.example server/.env
+cp client/.env.example client/.env
+```
+
+On Windows Command Prompt, use:
+
+```bat
+copy server\.env.example server\.env
+copy client\.env.example client\.env
+```
+
+At minimum, set these backend values in `server/.env`:
+
+```env
+NODE_ENV=development
+PORT=5000
+CLIENT_URL=http://localhost:5173
+DATABASE_URL=postgresql://budgetbrain:budgetbrain@localhost:5432/budgetbrain?schema=public
+JWT_SECRET=replace_with_a_unique_secret_of_at_least_32_characters
+```
+
+AI integrations are optional. To enable them, add the appropriate keys:
+
+```env
+GROQ_API_KEY=
 GROQ_MODEL=llama-3.1-8b-instant
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
 AI_FEATURES_ENABLED=true
 AI_DAILY_LIMIT=20
 AI_MONTHLY_LIMIT=300
 ```
 
-Never commit `.env` files or real API keys to GitHub. The React frontend never calls Groq directly; it only calls BudgetBrain backend endpoints such as `/api/ai/chat`, `/api/ai/monthly-diagnosis`, and `/api/ai/action-plan`.
+Optional financial-data services:
 
-Start PostgreSQL:
+```env
+SERVER_URL=http://localhost:5000
+INTEGRATION_ENCRYPTION_KEY=
+YNAB_CLIENT_ID=
+YNAB_CLIENT_SECRET=
+YNAB_REDIRECT_URI=http://localhost:5000/api/integrations/ynab/callback
+CURRENCY_API_URL=https://api.frankfurter.app
+HOLIDAY_API_URL=https://date.nager.at/api/v3
+```
+
+Never expose backend secrets through `VITE_*` variables or commit `.env` files.
+
+### 3. Start PostgreSQL
 
 ```bash
 docker compose up -d postgres
 ```
 
-Install dependencies:
+If you use an existing PostgreSQL installation instead, update `DATABASE_URL` accordingly.
 
-```bash
-npm run install:all
-```
-
-Create local environment files:
-
-```bash
-copy server\.env.example server\.env
-copy client\.env.example client\.env
-```
-
-Update `server/.env`:
-
-```env
-NODE_ENV=development
-PORT=5000
-DATABASE_URL=postgresql://budgetbrain:budgetbrain@localhost:5432/budgetbrain?schema=public
-JWT_SECRET=replace_with_a_unique_32_character_minimum_secret
-GROQ_API_KEY=replace_with_your_groq_api_key
-GROQ_MODEL=llama-3.1-8b-instant
-AI_FEATURES_ENABLED=true
-CLIENT_URL=http://localhost:5173
-SENTRY_DSN=
-AI_DAILY_LIMIT=20
-AI_MONTHLY_LIMIT=300
-LOG_LEVEL=info
-```
-
-Apply database migrations:
+### 4. Apply migrations
 
 ```bash
 npm run db:deploy
 ```
 
-Run the API and frontend in separate terminals:
+Optional fictional demo data can be added with:
+
+```bash
+npm run db:seed
+```
+
+### 5. Run the application
+
+Start the API and client in separate terminals:
 
 ```bash
 npm run server:dev
+```
+
+```bash
 npm run client:dev
 ```
 
-Open the app at:
+Then open [http://localhost:5173](http://localhost:5173). The API health endpoint is available at [http://localhost:5000/health](http://localhost:5000/health).
 
-```text
-http://localhost:5173
-```
+## Available scripts
 
-The API health endpoint is:
+Run these commands from the repository root.
 
-```text
-http://localhost:5000/health
-```
+| Command | Purpose |
+| --- | --- |
+| `npm run install:all` | Install server and client dependencies |
+| `npm run server:dev` | Start the API with automatic reload |
+| `npm run client:dev` | Start the Vite development server |
+| `npm run db:deploy` | Apply checked-in Prisma migrations |
+| `npm run db:migrate -- --name <name>` | Create a development migration |
+| `npm run db:seed` | Load fictional seed data |
+| `npm test` | Run server and client test suites |
+| `npm run server:test` | Run backend tests |
+| `npm run client:test` | Run frontend tests |
+| `npm run build` | Build the production frontend |
 
-## Verification
+## Testing and verification
 
-Run the full test suite from the repository root:
+Run the full automated test suite:
 
 ```bash
 npm test
 ```
 
-Build the frontend:
+Create a production frontend build:
 
 ```bash
 npm run build
 ```
 
-Useful targeted commands:
+The test suite covers authentication, ownership and request validation, positive/zero/negative safe-to-spend states, payday windows, safety buffers, obligation deduplication, recurring protection decisions, confidence and pressure levels, transaction normalization, CSV debit/credit handling, recurrence detection, currency caching and fallback, holiday payday choices, affordability checks, AI limits, and key dashboard flows.
 
-```bash
-npm run server:test
-npm run client:test
-npm run db:migrate -- --name descriptive_migration_name
-npm run db:seed
-```
+## Security and privacy
 
-The current suite covers authentication, validation, finance endpoints, CSV import, money mode calculations, affordability checks, chat persistence, AI limit behavior, dashboard rendering, auth pages, theme switching, input typing regressions and the mini chatbot.
+- Authentication-protected routes and user-scoped database queries
+- Password hashing with configurable bcrypt rounds
+- Zod validation for API input
+- Helmet security headers, CORS restrictions, and rate limiting
+- AI request limits to control cost and abuse
+- Summarised financial context sent to AI providers instead of unnecessary identity data
+- Account export and deletion endpoints
+- Encrypted-at-rest integration token structure with no token logging or frontend exposure
+- User-scoped connections, imports, accounts, transactions, category rules, and recurrence patterns
+- Optional Sentry integration and structured Pino logging
 
-## Known Limitations / Future Work
-
-- BudgetBrain is not connected to real bank APIs.
-- AI responses are educational only and are not professional financial, tax, legal or credit advice.
-- CSV auto-categorization is keyword-based and intentionally simple.
-- Smart document extraction uses heuristic preview data in this portfolio build; production OCR/model extraction and encrypted file storage are future work.
-- Privacy and AI preference settings are implemented as runtime preferences in this build; durable preference storage is a future database migration.
-- Current balance is estimated from recorded monthly income and expenses until a real bank-balance integration exists.
-- Live demo deployment is still pending.
-- Future work includes recurring transactions, richer charts, bank-provider integrations, downloadable reports and deeper AI spending insights.
-
-## Security And Production Notes
-
-- Use a unique 32+ character `JWT_SECRET` in every environment.
-- Keep `DATABASE_URL`, `JWT_SECRET`, `GROQ_API_KEY` and `SENTRY_DSN` out of the Vite client and out of Git.
-- Production CORS only allows the configured `CLIENT_URL`.
-- AI usage limits are enforced before provider calls to reduce abuse and cost exposure.
-- Request validation is handled with Zod schemas.
-- Helmet, rate limiting and structured error handling are enabled on the API.
-- The included Privacy and Terms pages are drafts and should be reviewed by qualified counsel before public launch.
+For production, use unique secrets, restrict `CLIENT_URL` to the deployed frontend origin, configure HTTPS, and review the included privacy and terms drafts with qualified counsel.
 
 ## Deployment
 
-Backend options:
+The repository includes deployment configuration for:
 
-- Render Blueprint via `render.yaml`
-- Railway service via `server/railway.toml`
-- Any Node-compatible host with PostgreSQL and environment variables configured
+- Vercel: [`client/vercel.json`](client/vercel.json)
+- Render: [`render.yaml`](render.yaml)
+- Railway: [`server/railway.toml`](server/railway.toml)
+- Docker Compose for local PostgreSQL: [`docker-compose.yml`](docker-compose.yml)
 
-Frontend options:
+Production deployments must provide `DATABASE_URL`, `JWT_SECRET`, `CLIENT_URL`, and the relevant optional AI and observability variables. The frontend should set `VITE_API_URL` to the public API origin.
 
-- Vercel using `client/vercel.json`
-- Any static host that can serve the Vite `client/dist` output
+## Current limitations
 
-Required production variables:
+- The included bank connection is simulated and does not connect to real financial institutions.
+- Current balance is entered during payday setup or supplied by the simulated Demo Bank; no real bank-balance provider is included.
+- Deterministic categorisation is intentionally rule-based; ambiguous items require review.
+- YNAB depends on user-supplied OAuth credentials and is not an Open Banking integration.
+- Currency and holiday data depend on external public providers; cached data is used when possible.
+- Document extraction uses a preview-and-confirm workflow; durable encrypted object storage is not included.
+- AI/privacy preferences other than base currency and holiday country remain runtime-only.
+- AI output is educational and may be unavailable when provider keys are not configured.
 
-| Variable | Purpose |
-|---|---|
-| `NODE_ENV=production` | Enables production behavior |
-| `PORT` | API listening port |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `JWT_SECRET` | Access token signing secret |
-| `GROQ_API_KEY` | AI provider credential |
-| `CLIENT_URL` | Exact frontend origin |
-| `AI_DAILY_LIMIT` | Per-user daily AI request limit |
-| `AI_MONTHLY_LIMIT` | Per-user monthly AI request limit |
-| `SENTRY_DSN` | Optional error monitoring |
-| `LOG_LEVEL` | API log verbosity |
-| `VITE_API_URL` | Frontend API base URL |
+## License
 
-## Repository Hygiene
-
-The project intentionally excludes local secrets, generated builds, logs, dependency folders and database exports through `.gitignore`. Demo data should be fictional only.
+No open-source licence is currently included. Unless a licence is added, the repository's source code remains subject to standard copyright restrictions.

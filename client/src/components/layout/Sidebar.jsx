@@ -16,7 +16,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/connect-bank', label: 'Connect Bank', icon: Landmark },
+  { to: '/connect-bank', label: 'Financial Sources', icon: Landmark },
   { to: '/payday-setup', label: 'Payday Setup', icon: WalletCards },
   { to: '/protected-essentials', label: 'Protected Essentials', icon: ShieldCheck },
   { to: '/transactions', label: 'Transactions', icon: ReceiptText },

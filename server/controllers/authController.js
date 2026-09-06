@@ -9,6 +9,7 @@ const tokenFor = (user) => jwt.sign({ id: user.id, role: user.role }, env.JWT_SE
 const preferences = new Map();
 const defaultPreferences = {
   currency: 'AUD',
+  countryCode: 'AU',
   paydayCadence: 'weekly',
   allowAiFinancialSummary: true,
   includeUploadedDocumentsInAi: false,
@@ -61,6 +62,11 @@ export async function exportMyData(req, res) {
       savingsGoals: true,
       debts: true,
       aiUsage: true,
+      financialConnections: { select: { id: true, provider: true, status: true, displayName: true, lastSyncedAt: true, createdAt: true, updatedAt: true } },
+      externalAccounts: true,
+      transactionImports: { include: { rows: true } },
+      categoryRules: true,
+      recurringPatterns: true,
     },
   });
   res.json({ exportedAt: new Date().toISOString(), data });
@@ -92,7 +98,7 @@ export async function updateMyAccount(req, res) {
 }
 
 export async function getMyPreferences(req, res) {
-  res.json({ ...defaultPreferences, ...(preferences.get(req.user.id) || {}) });
+  res.json({ ...defaultPreferences, currency: req.user.baseCurrency || 'AUD', countryCode: req.user.countryCode || 'AU', ...(preferences.get(req.user.id) || {}) });
 }
 
 export async function updateMyPreferences(req, res) {
@@ -100,11 +106,15 @@ export async function updateMyPreferences(req, res) {
   if (!user || !(await bcrypt.compare(req.body.currentPassword || '', user.passwordHash))) {
     throw new AppError(401, 'CURRENT_PASSWORD_REQUIRED', 'For your security, enter your current password to continue');
   }
-  const allowed = ['currency', 'paydayCadence', 'allowAiFinancialSummary', 'includeUploadedDocumentsInAi', 'requirePasswordForSensitiveChanges', 'sessionTimeoutMinutes'];
+  const allowed = ['currency', 'countryCode', 'paydayCadence', 'allowAiFinancialSummary', 'includeUploadedDocumentsInAi', 'requirePasswordForSensitiveChanges', 'sessionTimeoutMinutes'];
   const current = { ...defaultPreferences, ...(preferences.get(req.user.id) || {}) };
   for (const key of allowed) {
     if (key in req.body) current[key] = req.body[key];
   }
   preferences.set(req.user.id, current);
+  const baseCurrency = String(current.currency || 'AUD').toUpperCase();
+  const countryCode = String(current.countryCode || 'AU').toUpperCase();
+  if (!/^[A-Z]{3}$/.test(baseCurrency) || !/^[A-Z]{2}$/.test(countryCode)) throw new AppError(400, 'INVALID_LOCALE_SETTINGS', 'Currency or country code is invalid');
+  await prisma.user.update({ where: { id: req.user.id }, data: { baseCurrency, countryCode } });
   res.json(current);
 }

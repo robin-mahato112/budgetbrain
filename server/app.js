@@ -16,6 +16,7 @@ import aiRoutes from './routes/ai.js';
 import chatRoutes from './routes/chat.js';
 import demoBankRoutes from './routes/demoBank.js';
 import financeRoutes from './routes/finance.js';
+import integrationRoutes from './routes/integrations.js';
 
 export function createApp() {
   const app = express();
@@ -85,6 +86,7 @@ export function createApp() {
   app.use('/api/chat', chatRoutes);
   app.use('/api/demo-bank', demoBankRoutes);
   app.use('/api/finance', financeRoutes);
+  app.use('/api/integrations', integrationRoutes);
   app.use(notFoundHandler);
   app.use(errorHandler);
 

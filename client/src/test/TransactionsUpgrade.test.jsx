@@ -49,6 +49,7 @@ const finance = {
     { id: '2', date: '2 Jun', merchant: 'Salary', category: 'Income', type: 'income', amount: 1400 },
   ],
   importTransactions: vi.fn(),
+  addTransaction: vi.fn(),
   refreshTransactions: vi.fn(),
   connectDemoBank: vi.fn(),
   disconnectDemoBank: vi.fn(),
@@ -107,6 +108,7 @@ describe('portfolio upgrade UI', () => {
       disclaimer: 'This uses sample bank data. No real bank account is connected.',
     };
     finance.importTransactions.mockReset().mockResolvedValue({ ok: true, imported: 3 });
+    finance.addTransaction.mockReset().mockResolvedValue({ ok: true });
     finance.refreshTransactions.mockReset().mockResolvedValue(finance.transactions);
     finance.connectDemoBank.mockReset().mockResolvedValue({
       ok: true,
@@ -255,7 +257,7 @@ describe('portfolio upgrade UI', () => {
     fireEvent.change(screen.getByLabelText('Expected pay amount'), { target: { value: '1400' } });
     fireEvent.change(screen.getByLabelText('Next payday'), { target: { value: 'Friday' } });
     fireEvent.click(screen.getByRole('button', { name: /save payday setup/i }));
-    await waitFor(() => expect(budgetService.createTransaction).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(finance.addTransaction).toHaveBeenCalledWith(expect.objectContaining({
       amount: 1400,
       type: 'income',
     })));
@@ -263,7 +265,7 @@ describe('portfolio upgrade UI', () => {
 
   it('previews and edits AI-detected quick-add fields before saving', async () => {
     render(<SmartEntryPanel />);
-    expect(screen.getByText('Update your payday guardrail')).toBeInTheDocument();
+    expect(screen.getByText('Update your daily plan')).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText(/spent \$25/i), { target: { value: 'I spent $25 on lunch today' } });
     fireEvent.click(screen.getByRole('button', { name: /preview sentence/i }));
 
@@ -316,6 +318,7 @@ describe('portfolio upgrade UI', () => {
     const file = new File(['date,description,amount,type\n2026-06-01,Woolworths,-82.40,expense'], 'transactions.csv', { type: 'text/csv' });
     fireEvent.change(screen.getByLabelText(/choose a csv file/i), { target: { files: [file] } });
     await screen.findByText('transactions.csv');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Import CSV' })).not.toBeDisabled());
     fireEvent.submit(screen.getByRole('button', { name: 'Import CSV' }).closest('form'));
 
     await waitFor(() => expect(finance.importTransactions).toHaveBeenCalledWith(expect.stringContaining('Woolworths')));

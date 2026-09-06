@@ -90,6 +90,12 @@ export default function MoneyModePanel() {
           <Metric label="Last synced" value={formatSyncTime(insights?.demoBank?.lastSyncedAt || insights?.confidence?.lastUpdatedAt)} />
           <Metric label="Current balance" value={formatCurrency(mode.currentBalance)} />
         </div>
+        {insights?.confidence?.checks?.length > 0 && (
+          <details className="confidence-details">
+            <summary>Why BudgetBrain rates this number {String(insights.confidence.level).toLowerCase()} confidence</summary>
+            <ul>{insights.confidence.checks.map((check) => <li key={check.label}>{check.ok ? '✓' : '○'} {check.label}</li>)}</ul>
+          </details>
+        )}
         <p className="mode-guidance">{pressure?.action || action}</p>
         {pressure?.reason && <p className="mode-guidance">Money Pressure: {pressure.reason}</p>}
         {explainError && <p className="form-error" role="alert">{explainError}</p>}

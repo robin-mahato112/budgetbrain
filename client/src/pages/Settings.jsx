@@ -19,6 +19,7 @@ export default function Settings() {
   const [profile, setProfile] = useState({ name: user?.name || '', email: user?.email || '', currentPassword: '', newPassword: '' });
   const [prefs, setPrefs] = useState({
     currency: 'AUD',
+    countryCode: 'AU',
     paydayCadence: 'weekly',
     timezone: 'Australia/Sydney',
     weekStart: 'Monday',
@@ -145,7 +146,8 @@ export default function Settings() {
           <form className="settings-form" onSubmit={savePrefs}>
             <Input label="Default payday" value={prefs.defaultPayday || ''} onChange={(event) => setPrefs((current) => ({ ...current, defaultPayday: event.target.value }))} placeholder="Friday" />
             <label>Income frequency<select value={prefs.paydayCadence} onChange={(event) => setPrefs((current) => ({ ...current, paydayCadence: event.target.value }))}><option value="weekly">Weekly</option><option value="fortnightly">Fortnightly</option><option value="monthly">Monthly</option></select></label>
-            <label>Currency<select value={prefs.currency} onChange={(event) => setPrefs((current) => ({ ...current, currency: event.target.value }))}><option>AUD</option><option>USD</option><option>NZD</option></select></label>
+            <label>Base currency<select value={prefs.currency} onChange={(event) => setPrefs((current) => ({ ...current, currency: event.target.value }))}>{['AUD', 'USD', 'NZD', 'NPR', 'EUR', 'GBP'].map((currency) => <option key={currency}>{currency}</option>)}</select></label>
+            <label>Public holiday country<select value={prefs.countryCode} onChange={(event) => setPrefs((current) => ({ ...current, countryCode: event.target.value }))}><option value="AU">Australia</option><option value="NZ">New Zealand</option><option value="US">United States</option><option value="NP">Nepal</option><option value="GB">United Kingdom</option></select></label>
             <Input label="Timezone" value={prefs.timezone} onChange={(event) => setPrefs((current) => ({ ...current, timezone: event.target.value }))} />
             <Input label="Week start day" value={prefs.weekStart} onChange={(event) => setPrefs((current) => ({ ...current, weekStart: event.target.value }))} />
             <Button disabled={busy === 'prefs'}>Save payday preferences</Button>

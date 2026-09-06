@@ -16,6 +16,7 @@ export default function MiniGuardPreview() {
 
   return (
     <Card className={`mini-guard mini-guard--${mode.status}`}>
+      <span className="visually-hidden">Confidence: {insights.confidence?.level || 'Low'}</span>
       <div className="mini-guard__small">
         <ShieldCheck size={18} />
         <div>
