@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import InsightCards from '../components/dashboard/InsightCards';
@@ -77,6 +77,8 @@ vi.mock('../services/budgetService', () => ({
     confirmDocument: vi.fn(),
     deleteDocument: vi.fn(),
     getDemoScenarios: vi.fn(),
+    getPayday: vi.fn().mockResolvedValue({ nextPayday: null }),
+    savePayday: vi.fn().mockResolvedValue({ requiresConfirmation: false }),
   },
 }));
 
@@ -250,17 +252,20 @@ describe('portfolio upgrade UI', () => {
     expect(screen.getAllByText('Needs review').length).toBeGreaterThan(0);
   });
 
-  it('renders low-effort income setup options and saves quick main income', async () => {
+  it('persists expected pay as configuration without creating received income', async () => {
     render(<PaydaySetup />);
     expect(screen.getByText('Upload payslip')).toBeInTheDocument();
     expect(screen.getByText('Payday basics')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Expected pay amount'), { target: { value: '1400' } });
-    fireEvent.change(screen.getByLabelText('Next payday'), { target: { value: 'Friday' } });
+    fireEvent.change(screen.getByLabelText('Current balance'), { target: { value: '900' } });
+    fireEvent.change(screen.getByLabelText('Next payday'), { target: { value: '2026-10-09' } });
     fireEvent.click(screen.getByRole('button', { name: /save payday setup/i }));
-    await waitFor(() => expect(finance.addTransaction).toHaveBeenCalledWith(expect.objectContaining({
-      amount: 1400,
-      type: 'income',
+    await waitFor(() => expect(budgetService.savePayday).toHaveBeenCalledWith(expect.objectContaining({
+      expectedIncome: 1400,
+      currentBalance: 900,
+      nextPayday: '2026-10-09',
     })));
+    expect(finance.addTransaction).not.toHaveBeenCalled();
   });
 
   it('previews and edits AI-detected quick-add fields before saving', async () => {
@@ -304,7 +309,7 @@ describe('portfolio upgrade UI', () => {
   });
 
   it('renders professional settings sections and sensitive password prompts', async () => {
-    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><Settings /></MemoryRouter>);
+    await act(async () => { render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><Settings /></MemoryRouter>); });
     expect(screen.getByRole('tab', { name: 'Account' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Security' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Demo Bank' })).toBeInTheDocument();

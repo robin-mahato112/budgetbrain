@@ -3,12 +3,13 @@ import { CheckCircle2, HelpCircle, ShieldCheck, Sparkles } from 'lucide-react';
 import { useFinance } from '../../hooks/useFinance';
 import { budgetService } from '../../services/budgetService';
 import { chatService } from '../../services/chatService';
-import { formatCurrency } from '../../utils/formatCurrency';
+import { formatCurrency as formatAmount } from '../../utils/formatCurrency';
 import Button from '../common/Button';
 import Card from '../common/Card';
 
 export default function MoneyModePanel() {
-  const { insights } = useFinance();
+  const { insights, financialState } = useFinance();
+  const formatCurrency = (value) => formatAmount(value, { currency: financialState?.currency, decimals: 2 });
   const [form, setForm] = useState({ amount: '', category: '', description: '' });
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -151,7 +152,7 @@ export default function MoneyModePanel() {
               placeholder="What are you thinking of buying?"
             />
           </label>
-          <Button type="submit" icon={CheckCircle2}>Check purchase</Button>
+          <Button type="submit" icon={CheckCircle2} disabled={isSetup}>Check purchase</Button>
         </form>
         {error && <p className="form-error" role="alert">{error}</p>}
         {result && <p className="afford-result" role="status">{result.message}</p>}

@@ -65,15 +65,15 @@ describe('input typing regressions', () => {
     expect(email).toHaveValue('robin.mahato@example.com');
   });
 
-  it('keeps payday setup fields editable with spaces and later edits', () => {
+  it('keeps the payday date editable without accepting ambiguous free text', () => {
     render(<PaydaySetup />);
 
     const payday = screen.getByLabelText('Next payday');
     fireEvent.change(payday, { target: { value: 'Friday after work' } });
-    expect(payday).toHaveValue('Friday after work');
+    expect(payday).toHaveValue('');
 
-    fireEvent.change(payday, { target: { value: 'Friday' } });
-    expect(payday).toHaveValue('Friday');
+    fireEvent.change(payday, { target: { value: '2026-10-09' } });
+    expect(payday).toHaveValue('2026-10-09');
   });
 
   it('opens the compact account menu from the top bar', () => {

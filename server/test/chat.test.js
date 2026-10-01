@@ -2,6 +2,9 @@ import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '../lib/errors.js';
+import { financialStateFixture } from './helpers/financialState.js';
+import { getFinancialState } from '../services/financialStateService.js';
+vi.mock('../services/financialStateService.js', () => ({ getFinancialState: vi.fn() }));
 
 const userId = '3da104e7-75c7-4d9f-8b16-b2e129cd92db';
 const prismaMock = vi.hoisted(() => ({
@@ -34,6 +37,7 @@ const token = jwt.sign({ id: userId }, process.env.JWT_SECRET);
 
 describe('chat API', () => {
   beforeEach(() => {
+    getFinancialState.mockResolvedValue(financialStateFixture);
     process.env.GROQ_API_KEY = 'test-groq-key';
     process.env.GROQ_MODEL = 'llama-3.1-8b-instant';
     prismaMock.user.findUnique.mockResolvedValue({ id: userId, name: 'Test', email: 'test@example.com', role: 'USER' });
@@ -71,6 +75,8 @@ describe('chat API', () => {
     const sentMessages = groqCreate.mock.calls[0][0].messages;
     expect(sentMessages[1].content).toContain('User financial context');
     expect(sentMessages[1].content).toContain('Dining');
+    expect(sentMessages[1].content).toContain('Safe to spend: 300.00');
+    expect(getFinancialState).toHaveBeenCalledWith(userId);
     expect(sentMessages[1].content).not.toContain('test@example.com');
     expect(JSON.stringify(response.body)).not.toContain('test-groq-key');
   });

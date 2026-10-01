@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { merchantKey } from './categorisationService.js';
 import { calculateSafeToSpend } from './safeToSpendService.js';
+import { day, occurrenceDates, MAX_FORECAST_DAYS } from './scheduleService.js';
 
 const money = (value) => Number(value || 0);
 const DAY = 86400000;
@@ -29,38 +30,41 @@ export async function getFinancialState(userId, now = new Date()) {
 export function buildFinancialState({ user, protectedCosts = [], recurringPatterns = [], debts = [], recentTransactions = [], balanceSnapshot = null, now = new Date() }) {
   const payday = validDate(user.nextPayday);
   const today = startOfDay(now);
-  const daysUntilPayday = payday ? Math.max(0, Math.ceil((payday - today) / DAY)) : null;
+  const daysUntilPayday = payday ? Math.ceil((payday - today) / DAY) : null;
+  const validWindow = daysUntilPayday !== null && daysUntilPayday >= 0 && daysUntilPayday <= MAX_FORECAST_DAYS;
+  const currency = user.baseCurrency || 'AUD';
+  const balanceKnown = user.currentBalance !== null && user.currentBalance !== undefined || Boolean(balanceSnapshot);
   const availableBalance = user.currentBalance === null || user.currentBalance === undefined
     ? money(balanceSnapshot?.amount)
     : money(user.currentBalance);
 
-  const protectedOccurrences = payday
-    ? protectedCosts.flatMap((cost) => occurrencesBeforePayday(cost, today, payday))
+  const protectedOccurrences = validWindow
+    ? protectedCosts.filter((cost) => cost.enabled !== false).flatMap((cost) => occurrencesBeforePayday(cost, today, payday))
     : [];
-  const confirmedRecurring = payday
-    ? recurringPatterns.filter((pattern) => pattern.protectionStatus === 'PROTECTED' && inWindow(pattern.nextExpectedAt, today, payday))
+  const confirmedRecurring = validWindow
+    ? recurringPatterns.filter((pattern) => pattern.protectionStatus === 'PROTECTED' && (!pattern.currency || pattern.currency === currency)).flatMap((pattern) => occurrenceDates(pattern.nextExpectedAt, pattern.cadence, today, payday).map((dueDate) => ({ ...pattern, dueDate, recurringPatternId: pattern.id })))
     : [];
   const obligations = [...protectedOccurrences];
   const duplicateReasons = [];
 
   for (const recurring of confirmedRecurring) {
-    const duplicate = protectedOccurrences.find((cost) => sameObligation(cost, recurring));
+    const duplicate = protectedOccurrences.find((cost) => cost.kind !== 'OPTIONAL' && sameObligation(cost, recurring));
     if (duplicate) {
       duplicateReasons.push(`${recurring.description} matched an existing protected cost and was counted once.`);
       continue;
     }
     obligations.push({
-      id: `recurring:${recurring.id}`, recurringPatternId: recurring.id, merchant: recurring.description,
-      description: recurring.description, amount: money(recurring.amount), dueDate: recurring.nextExpectedAt,
-      category: 'RECURRING', kind: classifyCategory('SUBSCRIPTIONS'), source: 'RECURRING', confirmed: true,
+      id: `recurring:${recurring.id}:${recurring.dueDate.toISOString().slice(0, 10)}`, recurringPatternId: recurring.id, merchant: recurring.description,
+      description: recurring.description, amount: money(recurring.amount), dueDate: recurring.dueDate, currency,
+      category: 'RECURRING', kind: 'FIXED', source: 'RECURRING', confirmed: true,
     });
   }
 
-  if (payday && daysUntilPayday <= 31) {
+  if (validWindow && daysUntilPayday <= 31) {
     for (const debt of debts) {
       const candidate = {
         id: `debt:${debt.id}`, merchant: debt.name, description: debt.name, amount: money(debt.minimumPayment),
-        dueDate: payday, category: 'DEBT', kind: 'FIXED', source: 'DEBT', confirmed: true,
+        dueDate: payday, category: 'DEBT', kind: 'FIXED', source: 'DEBT', confirmed: true, estimatedDate: true,
       };
       if (!obligations.some((item) => sameObligation(item, candidate))) obligations.push(candidate);
     }
@@ -73,40 +77,53 @@ export function buildFinancialState({ user, protectedCosts = [], recurringPatter
     safetyBuffer: money(user.safetyBuffer),
     daysUntilPayday,
   });
-  const safeToSpend = calculation.rawSafeToSpend;
-  const mode = safeToSpend < 0 ? 'RECOVERY' : 'NORMAL';
+  const safeToSpend = round(calculation.rawSafeToSpend);
+  const protectedCount = protectedCosts.filter((item) => item.enabled !== false && item.classification !== 'OPTIONAL').length + recurringPatterns.filter((item) => item.protectionStatus === 'PROTECTED').length;
+  const checks = [
+    { id: 'balance', ok: balanceKnown, label: balanceKnown ? 'Current balance entered' : 'Enter your current balance', href: '/payday-setup' },
+    { id: 'payday', ok: validWindow && Boolean(user.paydayConfirmed), label: validWindow && user.paydayConfirmed ? 'Upcoming payday confirmed' : 'Confirm your next payday', href: '/payday-setup' },
+    { id: 'essentials', ok: protectedCount > 0, label: protectedCount > 0 ? 'Essential costs configured' : 'Add your essential costs', href: '/protected-essentials' },
+    { id: 'currency', ok: !recurringPatterns.some((item) => item.protectionStatus === 'PROTECTED' && item.currency && item.currency !== currency), label: 'Review recurring payments in another currency', href: '/protected-essentials' },
+  ];
+  const ready = checks.every((item) => item.ok);
+  const mode = !ready ? 'SETUP' : safeToSpend < 0 ? 'RECOVERY' : 'NORMAL';
   const shortfall = Math.max(0, -safeToSpend);
   const pressure = moneyPressure({ safeToSpend, availableBalance, daysUntilPayday, protectedAmount: calculation.protectedMoney, safetyBuffer: money(user.safetyBuffer) });
   const pendingRecurring = recurringPatterns.filter((item) => item.protectionStatus === 'PENDING').length;
   const unknownTransactions = recentTransactions.filter((item) => ['Uncategorised', 'Mixed / Needs Review'].includes(item.category)).length;
   const latestTransaction = recentTransactions[0]?.createdAt || recentTransactions[0]?.occurredAt || balanceSnapshot?.createdAt || null;
   const confidence = confidenceState({
-    paydayConfirmed: Boolean(payday && user.paydayConfirmed),
-    protectedCount: protectedCosts.filter((item) => item.enabled).length,
+    paydayConfirmed: validWindow && Boolean(user.paydayConfirmed),
+    protectedCount,
     pendingRecurring,
     unknownTransactions,
     latestTransaction,
     now,
   });
-  const adjustments = recoveryAdjustments(obligations, recentTransactions, shortfall);
+  const adjustments = recoveryAdjustments(calculation.obligations, shortfall);
 
   return {
+    currency,
+    readiness: { ready, checks },
+    balanceSource: user.currentBalance !== null && user.currentBalance !== undefined ? 'MANUAL' : balanceSnapshot ? 'DEMO' : 'MISSING',
+    assumptions: ['Current balance is a snapshot: reconcile it in Payday Setup after spending or importing history.', 'Expected payday income is not available to spend today.', ...(debts.length ? ['Debt minimums are estimated at payday because debt due dates are not yet recorded.'] : [])],
     availableBalance,
     expectedIncome: money(user.expectedIncome),
-    protectedAmount: calculation.protectedMoney,
-    upcomingObligationsTotal: obligations.reduce((sum, item) => sum + money(item.amount), 0),
+    protectedAmount: round(calculation.protectedMoney),
+    upcomingObligationsTotal: round(calculation.obligations.reduce((sum, item) => sum + money(item.amount), 0)),
     safetyBuffer: money(user.safetyBuffer),
     safeToSpend,
-    dailySafeToSpend: daysUntilPayday > 0 ? Math.max(0, safeToSpend) / daysUntilPayday : null,
+    dailySafeToSpend: ready && daysUntilPayday > 0 ? Math.floor(Math.max(0, safeToSpend) * 100 / daysUntilPayday) / 100 : null,
     daysUntilPayday,
     nextPayday: payday?.toISOString().slice(0, 10) || null,
-    moneyPressure: pressure.level,
+    moneyPressure: ready ? pressure.level : 'UNKNOWN',
     moneyPressureReasons: pressure.reasons,
     mode,
     shortfall,
-    confidence: confidence.level,
+    confidence: ready ? confidence.level : 'LOW',
     confidenceReasons: confidence.reasons,
-    upcomingObligations: obligations.map(publicObligation),
+    confidenceChecks: confidence.checks,
+    upcomingObligations: calculation.obligations.map(publicObligation).sort((left, right) => left.dueDate.localeCompare(right.dueDate)),
     recurringNeedsReview: recurringPatterns.filter((item) => item.protectionStatus === 'PENDING').map(publicRecurring),
     duplicateReasons,
     recoveryAdjustments: adjustments,
@@ -116,28 +133,17 @@ export function buildFinancialState({ user, protectedCosts = [], recurringPatter
 }
 
 function occurrencesBeforePayday(cost, today, payday) {
-  let due = validDate(cost.nextDueDate);
-  if (!due) return [];
-  const frequency = String(cost.frequency || 'ONE_TIME').toUpperCase();
-  const results = [];
-  while (due < today && frequency !== 'ONE_TIME') due = advance(due, frequency);
-  if (frequency === 'ONE_TIME' && due < today) return [];
-  while (inWindow(due, today, payday)) {
-    results.push({
+  return occurrenceDates(cost.nextDueDate, cost.frequency || 'ONE_TIME', today, payday).map((due) => ({
       id: `protected:${cost.id}:${due.toISOString().slice(0, 10)}`, protectedCostId: cost.id,
       recurringPatternId: cost.recurringPatternId, merchant: cost.name, description: cost.name,
       amount: money(cost.amount), originalAmount: cost.originalAmount === null ? null : money(cost.originalAmount),
       currency: cost.currency, dueDate: new Date(due), category: cost.category,
       kind: cost.classification, source: 'PROTECTED_COST', confirmed: true,
-    });
-    if (frequency === 'ONE_TIME') break;
-    due = advance(due, frequency);
-  }
-  return results;
+    }));
 }
 
 function sameObligation(left, right) {
-  if (left.recurringPatternId && right.recurringPatternId && left.recurringPatternId === right.recurringPatternId) return true;
+  const linked = left.recurringPatternId && left.recurringPatternId === right.recurringPatternId;
   const leftName = merchantKey(left.merchant || left.description);
   const rightName = merchantKey(right.merchant || right.description);
   const nameMatch = leftName && rightName && (leftName.includes(rightName) || rightName.includes(leftName));
@@ -145,7 +151,7 @@ function sameObligation(left, right) {
   const amountMatch = Math.abs(money(left.amount) - money(right.amount)) / maxAmount <= 0.1;
   const leftDate = validDate(left.dueDate); const rightDate = validDate(right.dueDate);
   const dateMatch = !leftDate || !rightDate || Math.abs(leftDate - rightDate) <= 3 * DAY;
-  return Boolean(nameMatch && amountMatch && dateMatch);
+  return Boolean((linked || nameMatch && amountMatch) && dateMatch);
 }
 
 function moneyPressure({ safeToSpend, availableBalance, daysUntilPayday, protectedAmount, safetyBuffer }) {
@@ -168,27 +174,23 @@ function confidenceState({ paydayConfirmed, protectedCount, pendingRecurring, un
     [Boolean(latestTransaction) && unknownTransactions === 0, 'No major unknown transactions', unknownTransactions ? `${unknownTransactions} transactions need categorisation` : 'Transaction categorisation needs current data'],
   ];
   const score = checks.filter(([ok]) => ok).length;
-  return { level: score >= 4 ? 'HIGH' : score >= 2 ? 'MEDIUM' : 'LOW', reasons: checks.map(([ok, yes, no]) => ok ? yes : no) };
+  return { level: score >= 4 ? 'HIGH' : score >= 2 ? 'MEDIUM' : 'LOW', reasons: checks.map(([ok, yes, no]) => ok ? yes : no), checks: checks.map(([ok, yes, no]) => ({ ok: Boolean(ok), label: ok ? yes : no })) };
 }
 
-function recoveryAdjustments(obligations, transactions, shortfall) {
+function recoveryAdjustments(obligations, shortfall) {
   if (!shortfall) return [];
   const candidates = [
-    ...obligations.filter((item) => item.kind === 'OPTIONAL').map((item) => ({ label: item.description, amount: money(item.amount), classification: 'OPTIONAL' })),
     ...obligations.filter((item) => item.kind === 'ADJUSTABLE_ESSENTIAL').map((item) => ({ label: item.description, amount: Number((money(item.amount) * 0.15).toFixed(2)), classification: 'ADJUSTABLE_ESSENTIAL' })),
   ];
-  const discretionary = transactions.filter((item) => ['Dining', 'Subscriptions', 'Other'].includes(item.category) && item.type === 'EXPENSE').reduce((sum, item) => sum + money(item.amount), 0);
-  if (discretionary > 0) candidates.push({ label: 'Pause discretionary spending', amount: Math.min(discretionary, shortfall), classification: 'OPTIONAL' });
+  // Past spending is not recoverable cash; do not claim that pausing it closes today's gap.
   let remaining = shortfall;
   return candidates.map((item) => { const usable = Math.min(item.amount, remaining); remaining = Math.max(0, remaining - usable); return { ...item, amount: usable, remainingGap: remaining }; }).filter((item) => item.amount > 0);
 }
 
-function publicObligation(item) { return { id: item.id, protectedCostId: item.protectedCostId || null, recurringPatternId: item.recurringPatternId || null, name: item.description, amount: money(item.amount), originalAmount: item.originalAmount, currency: item.currency || 'AUD', dueDate: validDate(item.dueDate)?.toISOString().slice(0, 10), category: item.category, classification: item.kind, source: item.source }; }
+function publicObligation(item) { return { id: item.id, protectedCostId: item.protectedCostId || null, recurringPatternId: item.recurringPatternId || null, name: item.description, amount: money(item.amount), originalAmount: item.originalAmount, currency: item.currency || 'AUD', dueDate: validDate(item.dueDate)?.toISOString().slice(0, 10), category: item.category, classification: item.kind, source: item.source, estimatedDate: Boolean(item.estimatedDate) }; }
 function publicRecurring(item) { return { id: item.id, description: item.description, amount: money(item.amount), currency: item.currency, cadence: item.cadence, nextExpectedAt: item.nextExpectedAt, confidence: money(item.confidence), protectionStatus: item.protectionStatus }; }
 function publicTransaction(item) { return { id: item.id, merchant: item.merchant, description: item.description, category: item.category, amount: item.type === 'INCOME' ? money(item.amount) : -money(item.amount), type: item.type.toLowerCase(), occurredAt: item.occurredAt, source: item.source }; }
-function classifyCategory(category) { return ['SUBSCRIPTIONS'].includes(category) ? 'OPTIONAL' : ['GROCERIES', 'TRANSPORT'].includes(category) ? 'ADJUSTABLE_ESSENTIAL' : 'FIXED'; }
-function inWindow(value, start, end) { const date = validDate(value); return Boolean(date && date >= start && date <= end); }
-function validDate(value) { if (!value) return null; const date = new Date(value); return Number.isNaN(date.getTime()) ? null : startOfDay(date); }
+function validDate(value) { return day(value); }
 function startOfDay(value) { const date = new Date(value); return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())); }
-function advance(value, frequency) { const date = new Date(value); if (frequency === 'WEEKLY') date.setUTCDate(date.getUTCDate() + 7); else if (frequency === 'FORTNIGHTLY') date.setUTCDate(date.getUTCDate() + 14); else if (frequency === 'MONTHLY') date.setUTCMonth(date.getUTCMonth() + 1); else if (frequency === 'QUARTERLY') date.setUTCMonth(date.getUTCMonth() + 3); else if (frequency === 'YEARLY') date.setUTCFullYear(date.getUTCFullYear() + 1); else return new Date('invalid'); return date; }
+function round(value) { return Math.round((value + Number.EPSILON) * 100) / 100; }
 function formatMoney(value) { const sign = value < 0 ? '-' : ''; return `${sign}$${Math.abs(value).toFixed(2)}`; }

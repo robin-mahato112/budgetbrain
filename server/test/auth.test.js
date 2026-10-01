@@ -23,6 +23,18 @@ describe('auth API', () => {
     prismaMock.user.update.mockReset();
   });
 
+  it('exports the complete payday plan while selecting no integration credentials', async () => {
+    const id = '3da104e7-75c7-4d9f-8b16-b2e129cd92db';
+    prismaMock.user.findUnique.mockResolvedValue({ id, name: 'Test', email: 'test@example.com', role: 'USER' });
+    const token = jwt.sign({ id }, process.env.JWT_SECRET);
+    const response = await request(createApp()).get('/api/auth/export').set('Authorization', `Bearer ${token}`);
+    expect(response.status).toBe(200);
+    const exportQuery = prismaMock.user.findUnique.mock.calls.map(([query]) => query).find((query) => query.select?.protectedCosts);
+    expect(exportQuery.select).toMatchObject({ currentBalance: true, safetyBuffer: true, nextPayday: true, expectedIncome: true, protectedCosts: true });
+    expect(exportQuery.select.passwordHash).toBeUndefined();
+    expect(exportQuery.select.financialConnections.select.encryptedAccessToken).toBeUndefined();
+  });
+
   it('registers a valid user and hashes the password', async () => {
     prismaMock.user.findUnique.mockResolvedValue(null);
     prismaMock.user.create.mockImplementation(async ({ data }) => ({

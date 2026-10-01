@@ -1,6 +1,8 @@
 import { AppError } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
-import { buildMonthlyInsights, evaluatePurchase, monthBounds } from '../services/financialContextService.js';
+import { buildMonthlyInsights, monthBounds } from '../services/financialContextService.js';
+import { getFinancialState } from '../services/financialStateService.js';
+import { assessPurchase } from '../services/purchaseAssessmentService.js';
 import {
   deletePendingDocument,
   getPendingDocument,
@@ -283,12 +285,9 @@ export async function checkAffordability(req, res) {
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new AppError(400, 'INVALID_PURCHASE_AMOUNT', 'Purchase amount must be greater than zero');
   }
-  const insights = await loadTransactionInsights(req.user.id);
-  res.json(evaluatePurchase(insights, {
-    amount,
-    category: req.body.category,
-    description: req.body.description,
-  }));
+  const state = await getFinancialState(req.user.id);
+  if (!state) throw new AppError(404, 'USER_NOT_FOUND', 'User not found');
+  res.json(assessPurchase(state, amount));
 }
 
 export async function uploadDocument(req, res) {
@@ -407,7 +406,8 @@ async function loadTransactionInsights(userId) {
     prisma.debt.findMany({ where: { userId } }),
     prisma.savingsGoal.findMany({ where: { userId } }),
   ]);
-  return buildMonthlyInsights(transactions, { previousTransactions, debts, goals });
+  const financialState = await getFinancialState(userId);
+  return buildMonthlyInsights(transactions, { previousTransactions, debts, goals, financialState });
 }
 
 export async function deleteTransaction(req, res) {

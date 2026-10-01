@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { day, MAX_FORECAST_DAYS } from '../services/scheduleService.js';
 
 const money = z.coerce.number().finite().nonnegative().max(100000000);
 const positiveMoney = money.positive();
@@ -52,7 +53,10 @@ export const protectedCostUpdateSchema = protectedCostCreateSchema.partial().ref
 
 export const paydayConfigurationSchema = z.object({
   currentBalance: z.coerce.number().finite().min(-100000000).max(100000000),
-  nextPayday: z.coerce.date(),
+  nextPayday: z.coerce.date().refine((date) => {
+    const days = (day(date) - day(new Date())) / 86400000;
+    return days >= 0 && days <= MAX_FORECAST_DAYS;
+  }, 'Choose a payday from today through the next 366 days'),
   paydayConfirmed: z.boolean(),
   expectedIncome: money.default(0),
   incomeFrequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY']),

@@ -1,5 +1,6 @@
 import { AppError } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
+import { getFinancialState } from '../services/financialStateService.js';
 import { buildAiFinancialContext, buildMonthlyInsights, monthBounds } from '../services/financialContextService.js';
 import { assertAiConfigured, createGroqChatCompletion } from '../services/groqService.js';
 import { getAiUsage, recordAiTokens, reserveAiRequest } from '../services/usageService.js';
@@ -223,7 +224,8 @@ async function getUserFinancialInsights(userId) {
     prisma.debt.findMany({ where: { userId } }),
     prisma.savingsGoal.findMany({ where: { userId } }),
   ]);
-  const optionsForAi = { previousTransactions, debts, goals };
+  const financialState = await getFinancialState(userId);
+  const optionsForAi = { previousTransactions, debts, goals, financialState };
   return {
     insights: {
       ...buildMonthlyInsights(transactions, optionsForAi),

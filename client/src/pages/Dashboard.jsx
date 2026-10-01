@@ -1,4 +1,5 @@
 import MoneyModePanel from '../components/dashboard/MoneyModePanel';
+import PaydayPlan from '../components/dashboard/PaydayPlan';
 import InsightCards from '../components/dashboard/InsightCards';
 import RecentTransactions from '../components/dashboard/RecentTransactions';
 import MiniGuardPreview from '../components/dashboard/MiniGuardPreview';
@@ -16,6 +17,7 @@ export default function Dashboard() {
     >
       {error && <p className="data-warning" role="status">{error}</p>}
       <MoneyModePanel />
+      <PaydayPlan />
       <InsightCards />
       <MiniGuardPreview />
       <div className="dashboard-grid">

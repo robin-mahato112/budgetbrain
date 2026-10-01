@@ -1,4 +1,5 @@
 import { cleanCategory } from './transactionImportService.js';
+import { applyFinancialState } from './financialInsightAdapter.js';
 import { calculateConfidence, calculateSafeToSpend } from './safeToSpendService.js';
 
 const number = (value) => Number(value || 0);
@@ -78,7 +79,7 @@ export function buildMonthlyInsights(transactions, options = {}) {
     categoryWarning: topCategoryShare >= 0.35 && topCategoryEntry[1] > 0,
   });
 
-  return {
+  return applyFinancialState({
     monthlyIncome,
     monthlyExpenses,
     netSavings: monthlyIncome - monthlyExpenses,
@@ -130,7 +131,7 @@ export function buildMonthlyInsights(transactions, options = {}) {
         ? `You can cover ${emergencyDays} days of essential expenses.`
         : 'Add essential expenses to estimate your emergency buffer.',
     },
-  };
+  }, options.financialState);
 }
 
 export function buildAiFinancialContext(transactions, options = {}) {

@@ -8,12 +8,13 @@ import { useFinance } from '../hooks/useFinance';
 import { budgetService } from '../services/budgetService';
 
 export default function PaydaySetup() {
-  const { addTransaction, refreshTransactions } = useFinance();
+  const { refreshTransactions } = useFinance();
   const [form, setForm] = useState({ balance: '', payday: '', payAmount: '', safetyBuffer: '0', frequency: 'weekly', confidence: 'confirmed' });
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [status, setStatus] = useState('');
   const [forecast, setForecast] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     budgetService.getPayday?.().then((data) => {
@@ -30,24 +31,12 @@ export default function PaydaySetup() {
   const save = async (event) => {
     event.preventDefault();
     const amount = Number(form.payAmount || 0);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.payday)) {
-      // Retain the legacy free-text flow for existing users, but authoritative forecasting requires an ISO date.
-      if (Number.isFinite(amount) && amount > 0) {
-      const result = await addTransaction({
-        merchant: 'Expected pay',
-        category: 'Income',
-        amount,
-        type: 'income',
-      });
-      if (!result.ok) {
-        setStatus(result.message);
-        return;
-      }
-      await refreshTransactions();
-      }
-      setStatus('Use a YYYY-MM-DD payday to save it to the financial engine.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.payday) || form.balance === '') {
+      setStatus('Enter a balance and choose your next payday. Expected pay is not recorded as received income.');
       return;
     }
+      if (saving) return;
+      setSaving(true);
       try {
         const nextForecast = await budgetService.savePayday({
           currentBalance: Number(form.balance), nextPayday: form.payday, paydayConfirmed: form.confidence === 'confirmed',
@@ -55,16 +44,16 @@ export default function PaydaySetup() {
           holidayPaydayRule: forecast?.behaviour || null,
         });
         setForecast(nextForecast);
+        await refreshTransactions();
         if (nextForecast.requiresConfirmation) {
           setStatus(`Your payday falls on ${nextForecast.holiday}. Confirm how your employer handles public holidays.`);
           return;
         }
-        await refreshTransactions();
       } catch (error) {
         setStatus(error.response?.data?.message || 'Payday details could not be saved.');
         return;
-      }
-    setStatus('Payday setup saved. Dashboard calculations will use your latest income and transactions.');
+      } finally { setSaving(false); }
+    setStatus('Payday setup saved. Your current balance and protected costs now update the dashboard.');
   };
 
   const uploadPayslip = async (event) => {
@@ -82,9 +71,9 @@ export default function PaydaySetup() {
           <CalendarDays size={22} />
           <div><h2>Payday basics</h2><p>Keep this short: balance, next payday, expected pay, frequency, and confidence.</p></div>
           <form className="settings-form" onSubmit={save}>
-            <Input label="Current balance" type="number" step="0.01" value={form.balance} onChange={(event) => setForm((current) => ({ ...current, balance: event.target.value }))} placeholder="900" />
-            <Input label="Next payday" value={form.payday} onChange={(event) => setForm((current) => ({ ...current, payday: event.target.value }))} placeholder="Friday" />
-            <small>Use YYYY-MM-DD to enable public-holiday checks.</small>
+            <Input label="Current balance" required type="number" step="0.01" value={form.balance} onChange={(event) => setForm((current) => ({ ...current, balance: event.target.value }))} placeholder="900" />
+            <Input label="Next payday" required type="date" value={form.payday} onChange={(event) => setForm((current) => ({ ...current, payday: event.target.value }))} />
+            <small>Enter today's available balance. Expected pay is kept separate until it arrives.</small>
             {forecast?.requiresConfirmation && (
               <label>Your payday falls on {forecast.holiday}. When do you normally receive pay?
                 <select value={forecast.behaviour || ''} onChange={(event) => setForecast((current) => ({ ...current, behaviour: event.target.value }))}>
@@ -108,7 +97,7 @@ export default function PaydaySetup() {
                 <option value="uncertain">Uncertain</option>
               </select>
             </label>
-            <Button type="submit" icon={Save}>Save payday setup</Button>
+            <Button type="submit" icon={Save} disabled={saving}>{saving ? 'Saving…' : 'Save payday setup'}</Button>
           </form>
         </Card>
 

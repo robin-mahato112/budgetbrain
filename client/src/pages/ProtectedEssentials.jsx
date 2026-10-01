@@ -42,14 +42,22 @@ export default function ProtectedEssentials() {
   };
   const remove = async (id) => {
     if (!window.confirm('Delete this protected cost?')) return;
-    await budgetService.deleteProtectedCost(id); await Promise.all([load(), refreshTransactions()]); setStatus('Protected cost deleted.');
+    await perform(() => budgetService.deleteProtectedCost(id), 'Protected cost deleted.');
   };
   const toggle = async (cost) => {
-    await budgetService.updateProtectedCost(cost.id, { enabled: !cost.enabled }); await Promise.all([load(), refreshTransactions()]);
+    await perform(() => budgetService.updateProtectedCost(cost.id, { enabled: !cost.enabled }), cost.enabled ? 'Protected cost paused.' : 'Protected cost enabled.');
   };
   const reviewRecurring = async (id, protectionStatus) => {
-    await budgetService.updateRecurringPattern(id, protectionStatus); await Promise.all([load(), refreshTransactions()]);
-    setStatus(protectionStatus === 'PROTECTED' ? 'Recurring payment is now protected.' : 'Recurring payment ignored.');
+    await perform(() => budgetService.updateRecurringPattern(id, protectionStatus), protectionStatus === 'PROTECTED' ? 'Recurring payment is now protected.' : 'Recurring payment ignored.');
+  };
+  const perform = async (operation, message) => {
+    if (loading) return;
+    setLoading(true); setStatus('');
+    try { await operation(); }
+    catch (error) { setStatus(error.response?.data?.message || 'The change could not be saved. Please retry.'); setLoading(false); return; }
+    try { await load(); await refreshTransactions(); setStatus(message); }
+    catch { setStatus('Saved, but the latest totals could not be loaded. Refresh the page.'); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -81,6 +89,13 @@ export default function ProtectedEssentials() {
             {recurring.filter((item) => item.protectionStatus === 'PENDING').map((item) => <div key={item.id}><span>{item.cadence}</span><strong>{item.description} · {item.currency} {Number(item.amount).toFixed(2)}</strong><span><button type="button" onClick={() => reviewRecurring(item.id, 'PROTECTED')}>Protect</button> <button type="button" onClick={() => reviewRecurring(item.id, 'IGNORED')}>Ignore</button></span></div>)}
             {!recurring.some((item) => item.protectionStatus === 'PENDING') && <p>No recurring payments need review.</p>}
           </div>
+          {recurring.some((item) => item.protectionStatus !== 'PENDING') && <details>
+            <summary>Previously reviewed recurring payments</summary>
+            <ul>{recurring.filter((item) => item.protectionStatus !== 'PENDING').map((item) => <li key={item.id}>
+              <span>{item.description} ({item.currency}) — {item.protectionStatus === 'PROTECTED' ? 'Protected' : 'Ignored'} </span>
+              <button type="button" disabled={loading} onClick={() => reviewRecurring(item.id, item.protectionStatus === 'PROTECTED' ? 'IGNORED' : 'PROTECTED')}>{item.protectionStatus === 'PROTECTED' ? 'Stop protecting' : 'Protect payment'}</button>
+            </li>)}</ul>
+          </details>}
         </Card>
       </div>
       {status && <p className="status-message" role="status">{status}</p>}

@@ -266,6 +266,10 @@ Run these commands from the repository root.
 
 ## Testing and verification
 
+See [product research and development review](docs/PRODUCT_RESEARCH.md) for the evidence-backed product assessment, implemented reliability fixes, design options, remaining gaps and a proposed usability pilot.
+
+The dashboard now includes a payday setup checklist, a calculation breakdown and a dated list of protected costs. Purchase checks and AI context use the same backend financial state. Missing, unconfirmed or expired payday setup prevents a ready spending allowance. Current balance remains a manually reconciled snapshot; importing historical transactions does not automatically change it.
+
 Run the full automated test suite:
 
 ```bash

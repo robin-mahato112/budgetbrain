@@ -3,8 +3,7 @@ const amount = (value) => Math.max(0, Number(value || 0));
 export function calculateSafeToSpend(input) {
   const currentBalance = Number(input.currentBalance || 0);
   const confirmedIncome = amount(input.confirmedIncomeBeforePayday);
-  const obligations = deduplicateObligations(input.obligations || []);
-  const protectedEssentials = obligations.filter((item) => ['FIXED', 'ESSENTIAL', 'ADJUSTABLE_ESSENTIAL'].includes(item.kind));
+  const protectedEssentials = deduplicateObligations((input.obligations || []).filter((item) => ['FIXED', 'ESSENTIAL', 'ADJUSTABLE_ESSENTIAL'].includes(item.kind)));
   const protectedMoney = protectedEssentials.reduce((sum, item) => sum + amount(item.convertedAmount ?? item.amount), 0) + amount(input.safetyBuffer);
   const availableMoney = currentBalance + confirmedIncome;
   const rawSafeToSpend = availableMoney - protectedMoney;

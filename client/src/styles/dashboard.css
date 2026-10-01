@@ -209,6 +209,25 @@
 .source-card__status--connected { background: var(--primary-soft); color: var(--primary); }
 .source-card__actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: auto; }
 
+.payday-plan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin: 20px 0; }
+.payday-plan > .card { min-width: 0; }
+.payday-plan__setup { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between; }
+.payday-plan a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.payday-plan a:focus-visible, .payday-plan summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
+.payday-plan__numbers { display: grid; gap: 12px; }
+.payday-plan__numbers > div, .payday-plan__timeline > li { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.payday-plan__numbers dd, .payday-plan__timeline > li > span { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.payday-plan__numbers > div:last-child { border-top: 1px solid var(--border); padding-top: 12px; }
+.payday-plan__daily, .payday-plan__review { padding: 12px; background: var(--primary-soft); border-radius: var(--radius-sm); margin-top: 16px; }
+.payday-plan details { margin-top: 16px; color: var(--muted); }
+.payday-plan summary { cursor: pointer; color: var(--text); }
+.payday-plan details ul { padding: 12px 0 0 20px; }
+.payday-plan__timeline { list-style: none; padding: 0; }
+.payday-plan__timeline > li { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.payday-plan__timeline strong, .payday-plan__timeline time, .payday-plan__timeline small { display: block; overflow-wrap: anywhere; }
+.payday-plan__timeline time, .payday-plan__timeline small { color: var(--muted); font-size: .8rem; }
+@media (max-width: 700px) { .payday-plan { grid-template-columns: 1fr; } .payday-plan .card-heading { align-items: start; flex-wrap: wrap; gap: 12px; } }
+
 @media (max-width: 1100px) {
   .summary-grid, .insight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .chart-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }

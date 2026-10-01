@@ -1,6 +1,9 @@
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { financialStateFixture } from './helpers/financialState.js';
+import { getFinancialState } from '../services/financialStateService.js';
+vi.mock('../services/financialStateService.js', () => ({ getFinancialState: vi.fn() }));
 
 const userId = '3da104e7-75c7-4d9f-8b16-b2e129cd92db';
 const prismaMock = vi.hoisted(() => ({
@@ -16,6 +19,7 @@ const token = jwt.sign({ id: userId }, process.env.JWT_SECRET);
 
 describe('finance API', () => {
   beforeEach(() => {
+    getFinancialState.mockResolvedValue(financialStateFixture);
     prismaMock.user.findUnique.mockResolvedValue({ id: userId, name: 'Test', email: 'test@example.com', role: 'USER' });
     prismaMock.transaction.groupBy = prismaMock.transactionGroup;
     prismaMock.transaction.findMany.mockReset();
@@ -196,8 +200,8 @@ describe('finance API', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.mode).toBe('Freedom Mode');
-    expect(response.body.message).toContain('guilt-free spending');
-    expect(prismaMock.transaction.findMany.mock.calls[0][0].where.userId).toBe(userId);
+    expect(response.body.remainingGuiltFree).toBe(120);
+    expect(getFinancialState).toHaveBeenCalledWith(userId);
   });
 
   it('uploads a supported document and waits for confirmation before saving', async () => {

@@ -67,6 +67,16 @@ export async function exportMyData(req, res) {
       transactionImports: { include: { rows: true } },
       categoryRules: true,
       recurringPatterns: true,
+      protectedCosts: true,
+      baseCurrency: true,
+      countryCode: true,
+      currentBalance: true,
+      nextPayday: true,
+      paydayConfirmed: true,
+      expectedIncome: true,
+      incomeFrequency: true,
+      safetyBuffer: true,
+      holidayPaydayRule: true,
     },
   });
   res.json({ exportedAt: new Date().toISOString(), data });
